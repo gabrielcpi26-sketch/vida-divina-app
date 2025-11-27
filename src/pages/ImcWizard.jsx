@@ -16,7 +16,7 @@ function clasificarIMC(imc) {
   return "Obesidad";
 }
 
-// Opciones de objetivo principal
+// Opciones de objetivo principal (modo ULTRA simple, 1 clic)
 const objetivos = [
   { id: "Bajar grasa", label: "Quemar grasa", emoji: "🔥" },
   { id: "Control de peso", label: "Controlar mi peso", emoji: "⚖️" },
@@ -28,7 +28,7 @@ const objetivos = [
   { id: "Regulación hormonal", label: "Hormonas, ciclo, menopausia", emoji: "🌙" },
 ];
 
-// Configuración de necesidades (TRÍADA)
+// Misma configuración de necesidades que usa SmartAssessorPro (TRÍADA)
 const needsConfig = [
   { key: "detox", label: "Desintoxicación / digestión" },
   { key: "fatLoss", label: "Pérdida de grasa" },
@@ -49,8 +49,8 @@ const needsConfig = [
 export default function ImcWizard() {
   const navigate = useNavigate();
 
-  // Ya NO existe un paso 0 — arrancamos directo en el 1
-  const [step, setStep] = useState(1);
+  // step 0 = pantalla mágica inicial, 1 = objetivo, 2 = datos básicos + avanzado
+  const [step, setStep] = useState(0);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [form, setForm] = useState({
@@ -65,12 +65,14 @@ export default function ImcWizard() {
 
   const [error, setError] = useState("");
 
+  // ------- Paso 1: elegir objetivo con 1 clic -------
   function selectObjetivo(id) {
     setForm((prev) => ({ ...prev, objetivo: id }));
     setError("");
     setStep(2);
   }
 
+  // ------- Paso 2: básico + avanzado opcional -------
   function handleBasicChange(e) {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -79,7 +81,10 @@ export default function ImcWizard() {
   function toggleNeed(key) {
     setForm((prev) => ({
       ...prev,
-      needs: { ...prev.needs, [key]: !prev.needs[key] },
+      needs: {
+        ...prev.needs,
+        [key]: !prev.needs[key],
+      },
     }));
   }
 
@@ -89,7 +94,7 @@ export default function ImcWizard() {
 
   function goBack() {
     setError("");
-    setStep((s) => Math.max(1, s - 1));
+    setStep((s) => Math.max(0, s - 1));
   }
 
   function handleSubmit(e) {
@@ -132,18 +137,125 @@ export default function ImcWizard() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-emerald-50 flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-white/90 backdrop-blur rounded-2xl shadow-xl p-6 border border-emerald-100 relative overflow-hidden">
+        {/* Efecto “cinemático” suave */}
+        <div className="pointer-events-none absolute -top-10 -right-10 w-32 h-32 rounded-full bg-emerald-200/30 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-amber-100/40 blur-3xl" />
 
-        {/* ENCABEZADO */}
+        {/* Encabezado / status */}
         <div className="relative z-10 flex items-center justify-between text-xs text-gray-500 mb-3">
           <span className="uppercase tracking-wide font-semibold text-emerald-500">
             ASESORA PRO VIDA DIVINA
           </span>
-          <span> Paso {step} de 2 </span>
+          {step === 0 ? (
+            <span className="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-100 text-[11px] text-emerald-700">
+              Test rápido · menos de 1 min
+            </span>
+          ) : (
+            <span> Paso {step} de 2 </span>
+          )}
         </div>
 
         <div className="relative z-10">
+          {/* PASO 0: PANTALLA INICIAL CON GANCHO + IMAGEN + ESCALERA DE VALOR */}
+         
 
-          {/* PASO 1 — Objetivo */}
+{/* PASO 0: PANTALLA INICIAL CON GANCHO + ESCALERA DE VALOR */}
+{step === 0 && (
+<div className="text-center">
+
+
+    {/* Etiquetas superiores */}
+    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-[11px] text-emerald-700 font-semibold shadow-sm">
+      <span>✨ Análisis personalizado Vida Divina</span>
+      <span className="text-[10px] px-2 py-0.5 rounded-full bg-white border border-emerald-100">
+        Rápido · sin compromiso
+      </span>
+    </div>
+
+    {/* TÍTULO PRINCIPAL */}
+    <h1 className="mt-4 text-2xl md:text-3xl font-extrabold text-emerald-700 leading-snug">
+      ¿Problemas de inflamación,
+      <br />
+      o peso estancado?
+    </h1>
+
+  {/* TARJETA CON TU IMAGEN VERDE */} 
+<div className="mt-4 bg-white/95 border border-emerald-100 rounded-2xl shadow-md overflow-hidden">
+  <div className="relative flex justify-center items-center bg-white">
+    <img
+      src="/imagenes/teverde1.jpg" // Asegúrate que esté en public/imagenes/teverde1.jpg
+      alt="Desintoxícate con Vida Divina"
+      className="max-h-64 w-full object-contain"
+    />
+    <div className="absolute bottom-3 left-3 right-3 flex justify-center">
+      <div className="inline-block px-3 py-1 rounded-full bg-white/85 text-emerald-800 text-xs font-semibold shadow">
+        Desintoxícate con Vida Divina · Té Divina
+      </div>
+    </div>
+  </div>
+</div>
+
+
+    {/* TEXTO DE EMPATÍA / PROMESA */}
+ <p className="text-center text-gray-800 text-[16.5px] leading-snug px-3 font-medium">
+  <span className="font-semibold text-emerald-600">Descubre</span> qué pasa con tu cuerpo y <span className="font-bold text-emerald-600">toma el control YA</span>.
+</p>
+
+    {/* ESCALERA DE VALOR */}
+    <div className="mt-5 text-left text-sm text-gray-700 bg-emerald-50/80 border border-emerald-100 rounded-2xl p-4 shadow-sm">
+      <p className="font-semibold text-emerald-700 mb-2">
+        En menos de 1 minuto vas a:
+      </p>
+      <ul className="list-disc pl-4 space-y-1">
+        <li>Ver tu IMC explicado de forma sencilla.</li>
+        <li>
+          Definir tu objetivo prioritario (grasa, hormonas, digestión, energía…).
+        </li>
+        <li>
+          Recibir un combo sugerido de productos Vida Divina pensado
+          especialmente para ti.
+        </li>
+      </ul>
+    </div>
+
+    {/* TEXTO ACTUALIZADO + MANITA ANIMADA SOBRE EL BOTÓN */}
+    <p className="mt-5 text-sm text-emerald-700 font-medium px-3">
+      Empieza aquí ⬇️ responde un par de pasos y al final te enviaremos tus resultados
+      y tus productos recomendados.
+    </p>
+
+    {/* MANITA INTERACTIVA ARRIBA DEL BOTÓN */}
+    <div className="mt-1 text-2xl animate-bounce">
+      👇
+    </div>
+
+    {/* BOTÓN VERDE “FLOTANTE” MÁS LLAMATIVO */}
+    <div className="mt-3 flex flex-col items-center gap-2">
+      <button
+        onClick={() => setStep(1)}
+        className="w-full py-3 bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-600
+                   text-white rounded-xl font-bold text-base shadow-lg
+                   hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]
+                   transition-transform transition-shadow duration-200
+                   animate-pulse"
+      >
+        Empezar mi análisis (gratis)
+      </button>
+
+      <p className="text-xs text-gray-600">
+        Toca el botón verde, es rápido y sin compromiso
+      </p>
+    </div>
+
+    {/* DISCLAIMER */}
+    <p className="mt-4 text-[11px] text-gray-400">
+      No es un diagnóstico médico, pero sí una guía clara basada en tu cuerpo y tus objetivos.
+    </p>
+  </div>
+)}
+
+
+          {/* PASO 1: OBJETIVO */}
           {step === 1 && (
             <>
               <h1 className="text-xl font-bold text-emerald-700">
@@ -171,7 +283,14 @@ export default function ImcWizard() {
                 ))}
               </div>
 
-              <div className="mt-4 flex justify-end text-xs">
+              <div className="mt-4 flex justify-between text-xs">
+                <button
+                  type="button"
+                  onClick={() => setStep(0)}
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50"
+                >
+                  ← Volver
+                </button>
                 <button
                   type="button"
                   onClick={() =>
@@ -189,27 +308,27 @@ export default function ImcWizard() {
             </>
           )}
 
-          {/* PASO 2 — Datos + avanzado */}
+          {/* PASO 2: DATOS BÁSICOS + AVANZADO OPCIONAL */}
           {step === 2 && (
             <form onSubmit={handleSubmit}>
               <h1 className="text-xl font-bold text-emerald-700">
                 Último paso: ajustemos tu recomendación
               </h1>
               <p className="mt-1 text-sm text-gray-600">
-                Ingresa tus datos básicos. Si quieres, puedes personalizar aún más.
+                Solo necesito tus datos básicos. Si quieres, puedes personalizar aún más
+                en modo avanzado.
               </p>
 
               <div className="mt-3 space-y-3 text-sm">
-
                 <div>
                   <label className="block text-gray-600 mb-1">
-                    Nombre (opcional)
+                    Nombre (opcional, para saludarte)
                   </label>
                   <input
                     name="nombre"
                     value={form.nombre}
                     onChange={handleBasicChange}
-                    className="w-full border border-emerald-200 rounded-xl px-3 py-2"
+                    className="w-full border border-emerald-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-200"
                     placeholder="Ej. Diana"
                   />
                 </div>
@@ -221,16 +340,15 @@ export default function ImcWizard() {
                       name="sexo"
                       value={form.sexo}
                       onChange={handleBasicChange}
-                      className="w-full border border-emerald-200 rounded-xl px-3 py-2"
+                      className="w-full border border-emerald-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-200"
                     >
                       <option>Femenino</option>
                       <option>Masculino</option>
                       <option>Otro</option>
                     </select>
                   </div>
-
                   <div>
-                    <label className="block text-gray-600 mb-1">Edad</label>
+                    <label className="block text-gray-600 mb-1">Edad (opcional)</label>
                     <input
                       name="edad"
                       type="number"
@@ -238,7 +356,7 @@ export default function ImcWizard() {
                       max="90"
                       value={form.edad}
                       onChange={handleBasicChange}
-                      className="w-full border border-emerald-200 rounded-xl px-3 py-2"
+                      className="w-full border border-emerald-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-200"
                       placeholder="Ej. 35"
                     />
                   </div>
@@ -254,7 +372,7 @@ export default function ImcWizard() {
                       value={form.peso}
                       onChange={handleBasicChange}
                       required
-                      className="w-full border border-emerald-200 rounded-xl px-3 py-2"
+                      className="w-full border border-emerald-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-200"
                       placeholder="Ej. 68"
                     />
                   </div>
@@ -266,17 +384,18 @@ export default function ImcWizard() {
                       value={form.estatura}
                       onChange={handleBasicChange}
                       required
-                      className="w-full border border-emerald-200 rounded-xl px-3 py-2"
+                      className="w-full border border-emerald-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-200"
                       placeholder="Ej. 160"
                     />
                   </div>
                 </div>
               </div>
 
+              {/* AVANZADO OPCIONAL */}
               <button
                 type="button"
                 onClick={toggleAdvanced}
-                className="mt-4 w-full text-xs text-emerald-700 underline"
+                className="mt-4 w-full text-xs text-emerald-700 underline underline-offset-2"
               >
                 {showAdvanced
                   ? "Ocultar opciones avanzadas"
@@ -286,7 +405,7 @@ export default function ImcWizard() {
               {showAdvanced && (
                 <div className="mt-3 pt-3 border-t border-emerald-100 text-xs">
                   <div className="uppercase tracking-wide text-emerald-500 font-semibold mb-1">
-                    ¿Qué te gustaría mejorar?
+                    ¿Qué te gustaría mejorar? (puedes elegir varias)
                   </div>
                   <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto pr-1">
                     {needsConfig.map((n) => {
@@ -316,18 +435,22 @@ export default function ImcWizard() {
                 <button
                   type="button"
                   onClick={goBack}
-                  className="px-3 py-1.5 rounded-xl border border-gray-200 text-gray-600"
+                  className="px-3 py-1.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50"
                 >
                   ← Atrás
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold shadow"
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-semibold shadow hover:opacity-95"
                 >
                   Ver mis productos recomendados
                 </button>
               </div>
 
+              <p className="mt-2 text-[11px] text-gray-400 text-center">
+                No es un diagnóstico médico, pero sí una guía clara basada en tu cuerpo y
+                tus objetivos.
+              </p>
             </form>
           )}
         </div>
