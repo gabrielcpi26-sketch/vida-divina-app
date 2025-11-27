@@ -185,7 +185,7 @@ export default function ImcWizard() {
     <img
       src="/imagenes/teverde1.jpg" // Asegúrate que esté en public/imagenes/teverde1.jpg
       alt="Desintoxícate con Vida Divina"
-      className="max-h-64 w-full object-contain"
+      className="w-full max-h-[160px] object-contain rounded-xl"
     />
     <div className="absolute bottom-3 left-3 right-3 flex justify-center">
       <div className="inline-block px-3 py-1 rounded-full bg-white/85 text-emerald-800 text-xs font-semibold shadow">
@@ -197,32 +197,29 @@ export default function ImcWizard() {
 
 
     {/* TEXTO DE EMPATÍA / PROMESA */}
- <p className="text-center text-gray-800 text-[16.5px] leading-snug px-3 font-medium">
-  <span className="font-semibold text-emerald-600">Descubre</span> qué pasa con tu cuerpo y <span className="font-bold text-emerald-600">toma el control YA</span>.
+ <p className="text-[15px] text-center font-semibold text-emerald-700 leading-snug px-2 mb-2">
+  🚨 ¡Descubre qué pasa con tu cuerpo y <span className="text-pink-600 font-bold">toma el control YA</span>! 🚨
 </p>
 
     {/* ESCALERA DE VALOR */}
-    <div className="mt-5 text-left text-sm text-gray-700 bg-emerald-50/80 border border-emerald-100 rounded-2xl p-4 shadow-sm">
-      <p className="font-semibold text-emerald-700 mb-2">
-        En menos de 1 minuto vas a:
-      </p>
-      <ul className="list-disc pl-4 space-y-1">
-        <li>Ver tu IMC explicado de forma sencilla.</li>
-        <li>
-          Definir tu objetivo prioritario (grasa, hormonas, digestión, energía…).
-        </li>
-        <li>
-          Recibir un combo sugerido de productos Vida Divina pensado
-          especialmente para ti.
-        </li>
-      </ul>
-    </div>
+   <div className="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-2 text-[13px] leading-tight">
+  <p className="font-semibold text-emerald-700 mb-1">
+    En menos de 1 minuto vas a:
+  </p>
+  <ul className="list-disc list-inside space-y-1">
+    <li>Ver tu IMC explicado de forma sencilla.</li>
+    <li>Definir tu objetivo prioritario (grasa, hormonas, digestión, energía...).</li>
+    <li>Recibir un combo sugerido de productos Vida Divina pensado especialmente para ti.</li>
+  </ul>
+</div>
+
 
     {/* TEXTO ACTUALIZADO + MANITA ANIMADA SOBRE EL BOTÓN */}
-    <p className="mt-5 text-sm text-emerald-700 font-medium px-3">
-      Empieza aquí ⬇️ responde un par de pasos y al final te enviaremos tus resultados
-      y tus productos recomendados.
-    </p>
+<p className="text-[13px] text-center mt-2 leading-tight">
+  <span className="font-semibold text-emerald-700">
+    Empieza aquí ⬇️
+  </span> responde un par de pasos y al final te enviaremos tus resultados y productos recomendados.
+</p>    
 
     {/* MANITA INTERACTIVA ARRIBA DEL BOTÓN */}
     <div className="mt-1 text-2xl animate-bounce">
