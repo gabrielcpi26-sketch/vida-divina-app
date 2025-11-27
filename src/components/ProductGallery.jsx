@@ -38,7 +38,8 @@ export default function ProductGallery({
   const filtered = useMemo(() => {
     const q = norm(query);
     return mergedProducts.filter((p) => {
-      const passCat = category === "todas" || !category ? true : p.category === category;
+      const passCat =
+        category === "todas" || !category ? true : p.category === category;
       if (!passCat) return false;
 
       if (!q) return true;
@@ -63,11 +64,12 @@ export default function ProductGallery({
   const count = filtered.length;
 
   return (
-    <section className="mx-auto max-w-6xl px-4 mt-6">
+    // 📱 Contenedor tipo pantalla de celular
+    <section className="mx-auto max-w-md px-3 mt-4 pb-24">
       {/* Filtros y búsqueda */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        {/* Pestañas de categoría (estilo formal) */}
-        <div className="w-full md:w-auto overflow-x-auto">
+      <div className="flex flex-col gap-3">
+        {/* Pestañas de categoría */}
+        <div className="w-full overflow-x-auto">
           <div className="inline-flex items-center bg-white border border-emerald-200 rounded-xl p-1 shadow-sm">
             {CATEGORIES.map((c) => {
               const active = (category || "todas") === c.id;
@@ -77,7 +79,7 @@ export default function ProductGallery({
                   type="button"
                   onClick={() => setCategory && setCategory(c.id)}
                   className={[
-                    "px-3 py-1.5 text-sm rounded-lg transition-colors whitespace-nowrap",
+                    "px-3 py-1 text-xs sm:text-sm rounded-lg transition-colors whitespace-nowrap",
                     active
                       ? "bg-emerald-600 text-white shadow"
                       : "text-emerald-700 hover:bg-emerald-50",
@@ -91,23 +93,26 @@ export default function ProductGallery({
         </div>
 
         {/* Buscador */}
-        <div className="w-full md:w-72">
+        <div className="w-full">
           <div className="relative">
             <input
               type="text"
               placeholder="Buscar productos, ingredientes, beneficios…"
               value={query}
               onChange={(e) => setQuery && setQuery(e.target.value)}
-              className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 pr-9 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-200"
+              className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 pr-9 text-xs sm:text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-200"
             />
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-500 text-sm">⌕</span>
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-500 text-sm">
+              ⌕
+            </span>
           </div>
         </div>
       </div>
 
       {/* Resumen */}
-      <div className="mt-3 text-xs text-gray-500">
-        Mostrando <span className="font-medium text-gray-700">{count}</span> de{" "}
+      <div className="mt-3 text-[11px] text-gray-500">
+        Mostrando{" "}
+        <span className="font-medium text-gray-700">{count}</span> de{" "}
         <span className="font-medium text-gray-700">{total}</span> productos
         {category && category !== "todas" ? (
           <>
@@ -123,13 +128,14 @@ export default function ProductGallery({
         ) : null}
       </div>
 
-      {/* Grid de productos */}
+      {/* Grid de productos (2 columnas tipo app) */}
       {count > 0 ? (
-        <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="mt-4 grid grid-cols-2 gap-3">
           {filtered.map((p) => (
             <ProductCard
-  product={p}
-  profile={rec?.profile}
+              key={p.id}
+              product={p}
+              profile={rec?.profile}
               editMode={editMode}
               prices={prices}
               setPrices={setPrices}
@@ -147,20 +153,18 @@ export default function ProductGallery({
 
 function EmptyState({ onClear }) {
   return (
-    <div className="mt-10 rounded-2xl border border-emerald-100 bg-white p-8 text-center text-sm text-gray-600 shadow-sm">
+    <div className="mt-10 rounded-2xl border border-emerald-100 bg-white p-6 text-center text-sm text-gray-600 shadow-sm">
       <div className="text-emerald-700 font-semibold">Sin resultados</div>
-      <div className="mt-1">
+      <div className="mt-1 text-xs sm:text-sm">
         Ajusta la categoría o limpia tu búsqueda para ver más productos.
       </div>
       <button
         type="button"
         onClick={onClear}
-        className="mt-3 px-3 py-1.5 rounded-lg border border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+        className="mt-3 px-3 py-1.5 rounded-lg border border-emerald-200 text-emerald-700 hover:bg-emerald-50 text-xs sm:text-sm"
       >
         Limpiar búsqueda
       </button>
     </div>
   );
 }
-
-

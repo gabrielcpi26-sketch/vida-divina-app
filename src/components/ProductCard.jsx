@@ -9,17 +9,20 @@ export default function ProductCard({
   setPrices,
   onOpenAttachments,
 }) {
-
   const pid = product.id;
 
   const price = useMemo(() => {
     const pv = prices?.[pid]?.price;
-    return pv !== undefined && pv !== null ? Number(pv) : Number(product.price || 0);
+    return pv !== undefined && pv !== null
+      ? Number(pv)
+      : Number(product.price || 0);
   }, [prices, pid, product.price]);
 
   const discount = useMemo(() => {
     const dv = prices?.[pid]?.discount;
-    return dv !== undefined && dv !== null ? Number(dv) : Number(product.discount || 0);
+    return dv !== undefined && dv !== null
+      ? Number(dv)
+      : Number(product.discount || 0);
   }, [prices, pid, product.discount]);
 
   const finalPrice = useMemo(() => {
@@ -41,37 +44,43 @@ export default function ProductCard({
   }
 
   return (
-    <div className="rounded-2xl bg-white border border-emerald-100 shadow-sm overflow-hidden flex flex-col">
-      {/* Imagen del producto (ajuste automático) */}
-      <div className="bg-white aspect-square flex items-center justify-center p-3">
+    <div className="rounded-2xl bg-white border border-emerald-100 shadow-sm overflow-hidden flex flex-col text-xs sm:text-sm">
+      {/* IMAGEN: cuadrada y ordenada */}
+      <div className="w-full aspect-square bg-white flex items-center justify-center p-2 sm:p-3">
         {product.img ? (
           <img
             src={product.img}
             alt={product.name || "Producto"}
             className="w-full h-full object-contain object-center transition-transform duration-300 hover:scale-105"
-            style={{ maxHeight: "220px", objectFit: "contain" }}
             loading="lazy"
           />
         ) : (
-          <div className="text-xs text-gray-500">Sin imagen</div>
+          <div className="text-[11px] sm:text-xs text-gray-500">
+            Sin imagen
+          </div>
         )}
       </div>
 
-      {/* Contenido */}
-      <div className="p-3 flex-1 flex flex-col gap-2">
-        <div className="font-semibold text-gray-800 line-clamp-2">{product.name}</div>
+      {/* CONTENIDO */}
+      <div className="p-2 sm:p-3 flex-1 flex flex-col gap-2">
+        {/* Nombre */}
+        <div className="font-semibold text-gray-800 line-clamp-2 min-h-[2.5rem]">
+          {product.name}
+        </div>
 
-        {/* Componentes o beneficios visibles */}
+        {/* Bullets / beneficios (máx 3 para que no se haga enorme) */}
         {Array.isArray(product.bullets) && product.bullets.length > 0 && (
-          <ul className="text-xs text-gray-600 list-disc ml-4 space-y-0.5">
-            {product.bullets.slice(0, 4).map((b, i) => (
-              <li key={i}>{b}</li>
+          <ul className="text-[11px] text-gray-600 list-disc ml-4 space-y-0.5">
+            {product.bullets.slice(0, 3).map((b, i) => (
+              <li key={i} className="leading-snug">
+                {b}
+              </li>
             ))}
           </ul>
         )}
 
-        {/* Precio / Descuento */}
-        <div className="mt-2">
+        {/* PRECIO / DESCUENTO */}
+        <div className="mt-1 sm:mt-2">
           {editMode ? (
             <div className="grid grid-cols-2 gap-2 items-end">
               <label className="text-[11px] text-gray-500">
@@ -79,7 +88,7 @@ export default function ProductCard({
                 <input
                   type="number"
                   min="0"
-                  className="mt-1 w-full rounded-lg border border-emerald-200 px-2 py-1 text-sm"
+                  className="mt-1 w-full rounded-lg border border-emerald-200 px-2 py-1 text-xs sm:text-sm"
                   value={price === "" ? "" : price}
                   onChange={(e) => updatePrice("price", e.target.value)}
                   placeholder="0"
@@ -91,32 +100,38 @@ export default function ProductCard({
                   type="number"
                   min="0"
                   max="95"
-                  className="mt-1 w-full rounded-lg border border-emerald-200 px-2 py-1 text-sm"
+                  className="mt-1 w-full rounded-lg border border-emerald-200 px-2 py-1 text-xs sm:text-sm"
                   value={discount === "" ? "" : discount}
                   onChange={(e) => updatePrice("discount", e.target.value)}
                   placeholder="0"
                 />
               </label>
-              <div className="col-span-2 text-sm">
+              <div className="col-span-2 text-xs sm:text-sm">
                 <span className="text-gray-500">Final: </span>
-                <span className="font-bold text-emerald-700">${finalPrice}</span>
+                <span className="font-bold text-emerald-700">
+                  ${finalPrice}
+                </span>
                 {discount > 0 && (
-                  <span className="ml-2 text-xs text-gray-400 line-through">
+                  <span className="ml-2 text-[11px] text-gray-400 line-through">
                     ${Number(price) || 0}
                   </span>
                 )}
               </div>
             </div>
           ) : (
-            <div className="flex items-baseline gap-2">
-              <div className="text-lg font-extrabold text-emerald-700">${finalPrice}</div>
+            <div className="flex items-baseline gap-1.5">
+              <div className="text-base sm:text-lg font-extrabold text-emerald-700">
+                ${finalPrice}
+              </div>
               {discount > 0 && (
-                <div className="text-xs text-gray-400 line-through">${Number(price) || 0}</div>
-              )}
-              {discount > 0 && (
-                <div className="text-[11px] px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
-                  -{discount}%
-                </div>
+                <>
+                  <div className="text-[11px] text-gray-400 line-through">
+                    ${Number(price) || 0}
+                  </div>
+                  <div className="text-[10px] px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
+                    -{discount}%
+                  </div>
+                </>
               )}
             </div>
           )}
@@ -126,19 +141,19 @@ export default function ProductCard({
         <button
           type="button"
           onClick={() => onOpenAttachments && onOpenAttachments(product)}
-          className="mt-2 px-3 py-2 rounded-lg border border-emerald-200 text-emerald-700 text-sm hover:bg-emerald-50"
+          className="mt-1 sm:mt-2 px-3 py-1.5 rounded-lg border border-emerald-200 text-emerald-700 text-xs sm:text-sm hover:bg-emerald-50"
         >
           Ver más
         </button>
 
-        {/* Botón dorado Pagar ahora */}
+        {/* Botón Pagar ahora */}
         <a
           href={`https://wa.me/527291022897?text=${encodeURIComponent(
             `Hola, quiero ${product.name} por $${finalPrice}.`
           )}`}
           target="_blank"
           rel="noreferrer"
-          className="mt-2 text-center rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-white py-2 text-sm font-semibold shadow hover:opacity-90"
+          className="mt-1 sm:mt-2 text-center rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-white py-1.5 sm:py-2 text-xs sm:text-sm font-semibold shadow hover:opacity-90"
         >
           Pagar ahora
         </a>
@@ -146,3 +161,4 @@ export default function ProductCard({
     </div>
   );
 }
+
