@@ -1,7 +1,6 @@
-// src/lib/supabaseClient.js
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = 'https://rakpwsrgxjkokvxywmob.supabase.co'; // reemplaza con el tuyo
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJha3B3c3JneGprb2t2eHl3bW9iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxNjc2NjEsImV4cCI6MjA3OTc0MzY2MX0.8xxxRTC_FMJArj6lKuLDc2Tegsvj0SYMd8PI-ARKo8E'; // reemplaza con tu clave
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);

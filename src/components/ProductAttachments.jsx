@@ -1,6 +1,8 @@
 // src/components/ProductAttachments.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { STORAGE, loadJSON, saveJSON } from "../lib/storage";
+import { subirImagenACatalogo } from "../utils/subirImagen";
+
 
 export default function ProductAttachments({
   productId,
@@ -41,18 +43,20 @@ export default function ProductAttachments({
   const [links, setLinks] = useState(current.links || []);
 
   // ---- Funciones: PORTADA ----
-  function onPickCoverFile(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    // Convertir a Base64 para guardar localmente (se mantiene sólo en tu navegador)
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result; // "data:image/png;base64,...."
-      setImageUrl(dataUrl);
-    };
-    reader.readAsDataURL(file);
-    e.target.value = "";
-  }
+function onPickCoverFile(e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  subirImagenACatalogo(file).then((url) => {
+    if (url) {
+      setImageUrl(url);
+      alert("Imagen subida correctamente.");
+    } else {
+      alert("Error al subir la imagen.");
+    }
+  });
+}
+
 
   // ---- Funciones: Componentes ----
   function addComponent() {
