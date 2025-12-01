@@ -10,9 +10,17 @@ import ProductAttachments from "./components/ProductAttachments";
 import SmartAssessorPro from "./components/SmartAssessorPro";
 import OfferTimer from "./components/OfferTimer";
 import DownloadAnalysisPdfButton from "./components/DownloadAnalysisPdfButton.jsx";
+import CatalogoAdmin from "./components/CatalogoAdmin";
+import { createClient } from '@supabase/supabase-js';
 
 import { STORAGE, loadJSON, saveJSON } from "./lib/storage";
 import { buildProducts } from "./data/catalog";
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
+
 
 // Perfil del usuario guardado por la calculadora IMC
 const STORAGE_USER_PROFILE = "vd_user_profile";
@@ -44,7 +52,9 @@ export default function VidaDivinaApp() {
   });
 
   // -------- Adjuntos (Ver más) --------
-  const [attachments, setAttachments] = useState(loadJSON(STORAGE.ATTACHMENTS, {}));
+  const [attachments, setAttachments] = useState(
+    loadJSON(STORAGE.ATTACHMENTS, {})
+  );
   const [showAttachments, setShowAttachments] = useState(false);
   const [attachmentsFor, setAttachmentsFor] = useState(null);
   const [attachmentsForName, setAttachmentsForName] = useState("");
@@ -52,10 +62,18 @@ export default function VidaDivinaApp() {
   // -------- Perfil del usuario (desde calculadora IMC) --------
   const [profile, setProfile] = useState(null);
 
+  // -------- Admin imágenes --------
+  const [showAdmin, setShowAdmin] = useState(false);
+
+  // -------- Mapa de imágenes dinámicas (Supabase) --------
+  const [imageMap, setImageMap] = useState({});
+
   function openAttachmentsFor(product) {
     if (!product) return;
     setAttachmentsFor(product.id);
-    setAttachmentsForName(product.name || product.title || `Producto #${product.id}`);
+    setAttachmentsForName(
+      product.name || product.title || `Producto #${product.id}`
+    );
     setShowAttachments(true);
   }
   function closeAttachments() {
@@ -63,6 +81,32 @@ export default function VidaDivinaApp() {
     setAttachmentsFor(null);
     setAttachmentsForName("");
   }
+
+  // -------- Cargar imágenes dinámicas desde Supabase --------
+  useEffect(() => {
+    const fetchImages = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("vd_catalog_images")
+          .select("*");
+
+        if (error) throw error;
+
+        const map = {};
+        (data || []).forEach((row) => {
+          if (row.product_id && row.image_url) {
+            map[row.product_id] = row.image_url;
+          }
+        });
+
+        setImageMap(map);
+      } catch (err) {
+        console.error("Error cargando imágenes de catálogo:", err);
+      }
+    };
+
+    fetchImages();
+  }, []);
 
   // -------- Cargar desde localStorage --------
   useEffect(() => {
@@ -92,7 +136,7 @@ export default function VidaDivinaApp() {
     }
   }, []);
 
-  // (bloque que ya tenías)
+  // (bloque que ya tenías, lo dejo igual)
   useEffect(() => {
     setPrices(loadJSON(STORAGE.PRICES, {}));
     setContent(loadJSON(STORAGE.CONTENT, {}));
@@ -120,6 +164,7 @@ export default function VidaDivinaApp() {
   const mergedProducts = useMemo(() => {
     return baseProducts.map((p) => {
       const c = (content && content[p.id]) || {};
+
       const mergedBullets =
         Array.isArray(c.bullets) && c.bullets.length
           ? c.bullets
@@ -127,22 +172,31 @@ export default function VidaDivinaApp() {
           ? p.bullets
           : [];
 
+      const imgFromDB = imageMap[p.id]; // viene de Supabase
+
       return {
         ...p,
         name: c.name || p.name,
-        img: c.img || p.img,
+        img: c.img || imgFromDB || p.img, // prioridad: contenido → BD → catálogo base
         blurb: c.blurb || p.blurb || "",
         bullets: mergedBullets,
         ingredients:
-          Array.isArray(c.ingredients) && c.ingredients.length ? c.ingredients : p.ingredients || [],
+          Array.isArray(c.ingredients) && c.ingredients.length
+            ? c.ingredients
+            : p.ingredients || [],
         benefits:
-          Array.isArray(c.benefits) && c.benefits.length ? c.benefits : p.benefits || [],
-        keywords: Array.isArray(c.keywords) && c.keywords.length ? c.keywords : p.keywords || [],
+          Array.isArray(c.benefits) && c.benefits.length
+            ? c.benefits
+            : p.benefits || [],
+        keywords:
+          Array.isArray(c.keywords) && c.keywords.length
+            ? c.keywords
+            : p.keywords || [],
         discount: p.discount ?? 0,
         price: p.price ?? 0,
       };
     });
-  }, [baseProducts, content]);
+  }, [baseProducts, content, imageMap]);
 
   // -------- Exponer a window (IDs) --------
   useEffect(() => {
@@ -174,8 +228,12 @@ export default function VidaDivinaApp() {
             ...(patch.name !== undefined ? { name: patch.name } : {}),
             ...(patch.img !== undefined ? { img: patch.img } : {}),
             ...(patch.blurb !== undefined ? { blurb: patch.blurb } : {}),
-            ...(Array.isArray(patch.ingredients) ? { ingredients: patch.ingredients } : {}),
-            ...(Array.isArray(patch.benefits) ? { benefits: patch.benefits } : {}),
+            ...(Array.isArray(patch.ingredients)
+              ? { ingredients: patch.ingredients }
+              : {}),
+            ...(Array.isArray(patch.benefits)
+              ? { benefits: patch.benefits }
+              : {}),
           },
         };
       });
@@ -189,17 +247,21 @@ export default function VidaDivinaApp() {
 
   // -------- Exportar IDs --------
   function exportCatalogIds() {
-    const list = (window.__mergedProducts || window.__baseProducts || []).map((p) => ({
-      id: p.id,
-      name: p.name || p.title || "",
-      category: p.category || "",
-      price: p.price ?? null,
-    }));
+    const list = (window.__mergedProducts || window.__baseProducts || []).map(
+      (p) => ({
+        id: p.id,
+        name: p.name || p.title || "",
+        category: p.category || "",
+        price: p.price ?? null,
+      })
+    );
     if (!list.length) {
       alert("No se encontraron productos. Asegúrate de que la app haya cargado.");
       return;
     }
-    const blob = new Blob([JSON.stringify(list, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(list, null, 2)], {
+      type: "application/json",
+    });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "catalog-ids.json";
@@ -218,7 +280,9 @@ export default function VidaDivinaApp() {
       when: new Date().toISOString(),
       app: "vida-divina-app",
     };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json",
+    });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "vida-divina-backup.json";
@@ -237,9 +301,11 @@ export default function VidaDivinaApp() {
         try {
           const data = JSON.parse(String(reader.result || "{}"));
           if (data.CONTENT) saveJSON(STORAGE.CONTENT, data.CONTENT);
-          if (data.ATTACHMENTS) saveJSON(STORAGE.ATTACHMENTS, data.ATTACHMENTS);
+          if (data.ATTACHMENTS)
+            saveJSON(STORAGE.ATTACHMENTS, data.ATTACHMENTS);
           if (data.PRICES) saveJSON(STORAGE.PRICES, data.PRICES);
-          if (data.TESTIMONIALS) saveJSON(STORAGE.TESTIMONIALS, data.TESTIMONIALS);
+          if (data.TESTIMONIALS)
+            saveJSON(STORAGE.TESTIMONIALS, data.TESTIMONIALS);
           if (data.MEDIA) saveJSON(STORAGE.MEDIA, data.MEDIA);
           if (data.SOCIAL) saveJSON(STORAGE.SOCIAL, data.SOCIAL);
 
@@ -260,6 +326,26 @@ export default function VidaDivinaApp() {
     input.click();
   }
 
+  // -------- Modo Admin de imágenes (solo tú) --------
+  if (showAdmin) {
+    return (
+      <div className="min-h-screen bg-emerald-50 text-gray-900">
+        <div className="fixed top-0 left-0 right-0 z-50 bg-emerald-700 text-white text-sm px-4 py-2 flex items-center justify-between shadow">
+          <span className="font-medium">Admin de Imágenes — Vida Divina</span>
+          <button
+            onClick={() => setShowAdmin(false)}
+            className="px-3 py-1 rounded bg-white text-emerald-700 hover:bg-emerald-50 border border-emerald-200"
+          >
+            Volver al catálogo
+          </button>
+        </div>
+        <div className="h-10" />
+        <CatalogoAdmin />
+      </div>
+    );
+  }
+
+  // -------- Vista normal del catálogo --------
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-emerald-50 text-gray-900">
       {/* Barra fija herramientas */}
@@ -286,6 +372,14 @@ export default function VidaDivinaApp() {
             title="Restaurar desde un archivo de respaldo"
           >
             Restaurar
+          </button>
+          {/* Botón para abrir el admin de imágenes */}
+          <button
+            onClick={() => setShowAdmin(true)}
+            className="px-3 py-1 rounded bg-yellow-400 text-emerald-900 hover:bg-yellow-300 border border-yellow-200"
+            title="Abrir panel para cambiar imágenes del catálogo"
+          >
+            Admin Imágenes
           </button>
         </div>
       </div>
@@ -377,12 +471,9 @@ export default function VidaDivinaApp() {
 
       {/* Footer */}
       <footer className="px-4 md:px-6 pt-6 pb-24 text-center text-xs text-gray-500">
-        © {new Date().getFullYear()} Vida Divina · Catálogo de demostración profesional.
+        © {new Date().getFullYear()} Vida Divina · Catálogo de demostración
+        profesional.
       </footer>
     </div>
   );
 }
-
-
-
-

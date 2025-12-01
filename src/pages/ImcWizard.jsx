@@ -1,6 +1,26 @@
 // src/pages/ImcWizard.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+// Efecto fade-in elegante
+const fadeInStyle = {
+  opacity: 0,
+  animation: "fadeIn 800ms ease forwards"
+};
+
+const fadeInKeyframes = `
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+`;
+// Insertar animación en el documento una vez
+if (typeof document !== "undefined" && !document.getElementById("fade-in-anim")) {
+  const style = document.createElement("style");
+  style.id = "fade-in-anim";
+  style.innerHTML = fadeInKeyframes;
+  document.head.appendChild(style);
+}
+
 
 const STORAGE_USER_PROFILE = "vd_user_profile";
 
@@ -47,6 +67,11 @@ const needsConfig = [
 ];
 
 export default function ImcWizard() {
+
+// Leer portada desde el Admin
+const portada = localStorage.getItem("vd_portada_url") 
+  || "/imagenes/teverde1.jpg"; // imagen por defecto si aún no subes una
+
   const navigate = useNavigate();
 
   // step 0 = pantalla mágica inicial, 1 = objetivo, 2 = datos básicos + avanzado
@@ -183,10 +208,15 @@ export default function ImcWizard() {
 <div className="mt-4 bg-white/95 border border-emerald-100 rounded-2xl shadow-md overflow-hidden">
   <div className="relative flex justify-center items-center bg-white">
     <img
-      src="/imagenes/teverde1.jpg" // Asegúrate que esté en public/imagenes/teverde1.jpg
-      alt="Desintoxícate con Vida Divina"
-      className="w-full max-h-[160px] object-contain rounded-xl"
-    />
+  src={portada}
+  alt="Imagen de bienvenida"
+  className="w-full max-h-[160px] object-contain rounded-xl shadow"
+  style={fadeInStyle}
+  onError={(e) => {
+    e.target.src = "/imagenes/teverde1.jpg";
+  }}
+/>
+
     <div className="absolute bottom-3 left-3 right-3 flex justify-center">
       <div className="inline-block px-3 py-1 rounded-full bg-white/85 text-emerald-800 text-xs font-semibold shadow">
         Desintoxícate con Vida Divina · Té Divina

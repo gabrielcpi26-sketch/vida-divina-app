@@ -1,14 +1,9 @@
-// src/data/catalog.js
-// Reconstrucción segura: 13 productos base + 33 plantillas editables para llegar a 46.
-// - Mantiene IDs conocidos sin inventar (para no romper precios/adjuntos).
-// - Agrega productos "custom_*" como plantillas (puedes renombrar id/name luego).
-// - Todo es editable en la UI (precio, bullets, img, blurb, ingredientes, beneficios).
-
 export function buildProducts() {
   const BASE = [
     // === 13 BASE (de tu catalog-ids.json visto en tu app) ===
     // NOTA: Si algún id/nombre no coincide con el tuyo, puedes ajustarlo.
     {
+
       id: "te_divina_original",
       name: "Té Divina Original",
       category: "tes",
