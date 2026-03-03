@@ -17,14 +17,14 @@ function clasificarIMC(imc) {
 }
 
 const objetivos = [
-  { id: "Bajar grasa", label: "Quemar grasa", emoji: "🔥" },
-  { id: "Control de peso", label: "Controlar mi peso", emoji: "⚖️" },
-  { id: "Ganar músculo", label: "Ganar músculo / tonificar", emoji: "💪" },
-  { id: "Más energía y enfoque", label: "Tener más energía", emoji: "⚡" },
-  { id: "Mejorar digestión", label: "Mejorar digestión / inflamación", emoji: "🌿" },
-  { id: "Manejar estrés", label: "Bajar estrés y descansar mejor", emoji: "🧘‍♀️" },
-  { id: "Mejorar piel", label: "Piel, cabello y uñas", emoji: "💛" },
-  { id: "Regulación hormonal", label: "Hormonas, ciclo, menopausia", emoji: "🌙" },
+  { id: "bajar_grasa", label: "Quemar grasa", emoji: "🔥" },
+  { id: "control_peso", label: "Controlar mi peso", emoji: "⚖️" },
+  { id: "aumentar_musculo", label: "Ganar músculo / tonificar", emoji: "💪" },
+  { id: "energia", label: "Tener más energía", emoji: "⚡" },
+  { id: "digestion", label: "Mejorar digestión / inflamación", emoji: "🌿" },
+  { id: "estres_sueno", label: "Bajar estrés y descansar mejor", emoji: "🧘‍♀️" },
+  { id: "piel", label: "Piel, cabello y uñas", emoji: "💛" },
+  { id: "hormonal", label: "Hormonas, ciclo, menopausia", emoji: "🌙" },
 ];
 
 const needsConfig = [

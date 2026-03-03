@@ -1,477 +1,915 @@
 // src/components/ProductAttachments.jsx
-import React, { useEffect, useMemo, useState } from "react";
-import { STORAGE, loadJSON, saveJSON } from "../lib/storage";
-import { subirImagenACatalogo } from "../utils/subirImagen";
+import React, { useMemo, useState } from "react";
 
+/**
+ * Modal de detalles de producto.
+ *
+ * - Modo CLIENTE (editMode = false):
+ *   Solo lectura: nombre, descripción, puntos clave, ingredientes, beneficios,
+ *   testimonios y links de video.
+ *
+ * - Modo ADMIN (editMode = true):
+ *   Desde aquí puedes editar:
+ *     · Nombre
+ *     · Descripción corta
+ *     · Puntos clave (uno por línea)
+ *     · Ingredientes destacados (uno por línea)
+ *     · Beneficios esperados (uno por línea)
+ *     · Testimonios (nombre + texto)
+ *     · Links de video (título + URL)
+ */
 
 export default function ProductAttachments({
-  productId,
-  productName,
-  attachments,
-  setAttachments,
+  product,
+  editMode = false,
+  content,
+  setContent,
+  testimonials = [],
+  setTestimonials,
+  media = [],
+  setMedia,
   onClose,
 }) {
-  const safeId = productId ?? "unknown";
+  if (!product) return null;
 
-  // Estado base
-  const current = useMemo(
-    () => attachments?.[safeId] || { files: [], links: [], components: [], benefits: [] },
-    [attachments, safeId]
+  const productId = product.id;
+
+  // Overrides actuales del producto en "content"
+  const currentOverrides =
+    (content && productId && content[productId]) || {};
+
+  // Estado local para los campos de texto del producto
+  const [name, setName] = useState(
+    currentOverrides.name || product.name || ""
+  );
+  const [blurb, setBlurb] = useState(
+    currentOverrides.blurb || product.blurb || ""
+  );
+  const [bulletsText, setBulletsText] = useState(
+    (currentOverrides.bullets || product.bullets || []).join("\n")
+  );
+  const [ingredientsText, setIngredientsText] = useState(
+    (currentOverrides.ingredients || product.ingredients || []).join("\n")
+  );
+  const [benefitsText, setBenefitsText] = useState(
+    (currentOverrides.benefits || product.benefits || []).join("\n")
   );
 
-  const contentAll = loadJSON(STORAGE.CONTENT, {});
-  const contentFor = contentAll?.[safeId] || {};
+const [packageUnits, setPackageUnits] = useState(() => {
+  const raw =
+    currentOverrides.package_units ??
+    currentOverrides.packageUnits ??
+    product.package_units ??
+    product.packageUnits ??
+    "";
 
-  const [tab, setTab] = useState("cover"); // cover | components | benefits | files
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) ? n : "";
+});
 
-  // PORTADA (nombre / imagen / blurb)
-  const [nameEdit, setNameEdit] = useState(contentFor.name || productName || "");
-  const [imageUrl, setImageUrl] = useState(contentFor.img || "");
-  const [blurb, setBlurb] = useState(contentFor.blurb || "");
+  // Testimonios y media filtrados por producto
+  const productTestimonials = useMemo(
+    () =>
+      Array.isArray(testimonials)
+        ? testimonials.filter((t) => {
+            const pid =
+              t.productId || t.product_id || t.idProducto || t.productoId;
+            return pid === productId;
+          })
+        : [],
+    [testimonials, productId]
+  );
 
-  // COMPONENTES
-  const [components, setComponents] = useState(current.components || contentFor.ingredients || []);
-  const [newComp, setNewComp] = useState("");
+  const productMedia = useMemo(
+    () =>
+      Array.isArray(media)
+        ? media.filter((m) => {
+            const pid =
+              m.productId || m.product_id || m.idProducto || m.productoId;
+            return pid === productId;
+          })
+        : [],
+    [media, productId]
+  );
 
-  // BENEFICIOS
-  const [benefits, setBenefits] = useState(current.benefits || contentFor.benefits || []);
-  const [newBenefit, setNewBenefit] = useState("");
-  const [bulkBenefits, setBulkBenefits] = useState("");
+  // Estado local para NUEVOS testimonios y links
+  const [newTestName, setNewTestName] = useState("");
+  const [newTestText, setNewTestText] = useState("");
+  const [newMediaLabel, setNewMediaLabel] = useState("");
+  const [newMediaUrl, setNewMediaUrl] = useState("");
 
-  // ARCHIVOS/LINKS
-  const [files, setFiles] = useState(current.files || []);
-  const [links, setLinks] = useState(current.links || []);
-
-  // ---- Funciones: PORTADA ----
-function onPickCoverFile(e) {
-  const file = e.target.files?.[0];
-  if (!file) return;
-
-  subirImagenACatalogo(file).then((url) => {
-    if (url) {
-      setImageUrl(url);
-      alert("Imagen subida correctamente.");
-    } else {
-      alert("Error al subir la imagen.");
-    }
-  });
-}
-
-
-  // ---- Funciones: Componentes ----
-  function addComponent() {
-    const v = (newComp || "").trim();
-    if (!v) return;
-    setComponents((prev) => [...prev, v]);
-    setNewComp("");
-  }
-  function removeComponent(idx) {
-    setComponents((prev) => prev.filter((_, i) => i !== idx));
-  }
-
-  // ---- Funciones: Beneficios ----
-  function addBenefit() {
-    const v = (newBenefit || "").trim();
-    if (!v) return;
-    setBenefits((prev) => [...prev, v]);
-    setNewBenefit("");
-  }
-  function addBulkBenefits() {
-    const lines = (bulkBenefits || "")
+  // Helpers para convertir texto -> arrays
+  function splitLines(str) {
+    if (!str) return [];
+    return String(str)
       .split(/\r?\n/)
       .map((s) => s.trim())
       .filter(Boolean);
-    if (!lines.length) return;
-    setBenefits((prev) => [...prev, ...lines]);
-    setBulkBenefits("");
-  }
-  function removeBenefit(idx) {
-    setBenefits((prev) => prev.filter((_, i) => i !== idx));
   }
 
-  // ---- Funciones: Archivos/Links ----
-  function onAddFiles(e) {
-    const list = Array.from(e.target.files || []);
-    if (!list.length) return;
-    const metas = list.map((f) => ({
-      name: f.name,
-      size: f.size,
-      type: f.type,
-      lastModified: f.lastModified,
-    }));
-    setFiles((prev) => [...prev, ...metas]);
-    e.target.value = "";
-  }
-  function onRemoveFile(idx) {
-    setFiles((prev) => prev.filter((_, i) => i !== idx));
-  }
-  function onAddLink() {
-    const url = prompt("Pega el enlace (Drive/OneDrive/URL pública):");
-    if (!url) return;
-    setLinks((prev) => [...prev, { url, label: url }]);
-  }
-  function onRemoveLink(idx) {
-    setLinks((prev) => prev.filter((_, i) => i !== idx));
-  }
+  // Guardar cambios de texto del producto (nombre, blurb, bullets, etc.)
+// src/components/ProductAttachments.jsx
+async function handleSaveProductText() {
+  if (!productId) return;
 
-  // ---- Guardar TODO ----
-  function handleSave(e) {
-    e?.preventDefault?.();
+  const patch = {
+    custom_name: (name || "").trim() || null,
+    custom_blurb: (blurb || "").trim() || null,
+    bullets: splitLines(bulletsText),
+    ingredients: splitLines(ingredientsText),
+    benefits: splitLines(benefitsText),
+    package_units: packageUnits === "" ? null : Number(packageUnits), // ✅ OJO: número
+    updated_at: new Date().toISOString(),
+  };
 
-    // 1) Guardar adjuntos (archivos/links + copia de componentes/beneficios)
-    const nextForId = {
-      files,
-      links,
-      components,
-      benefits,
-    };
-    const nextAll = { ...(attachments || {}), [safeId]: nextForId };
-    setAttachments?.(nextAll);
-    saveJSON(STORAGE.ATTACHMENTS, nextAll);
-
-    // 2) Guardar en CONTENT (nombre, img, blurb, ingredientes, beneficios)
-    const curr = loadJSON(STORAGE.CONTENT, {});
-    const prevFor = curr?.[safeId] || {};
-    const nextContent = {
-      ...curr,
-      [safeId]: {
-        ...prevFor,
-        name: nameEdit || prevFor.name || "",
-        img: imageUrl || prevFor.img || "",
-        blurb: blurb || prevFor.blurb || "",
-        ingredients: components || prevFor.ingredients || [],
-        benefits: benefits || prevFor.benefits || [],
-      },
-    };
-    saveJSON(STORAGE.CONTENT, nextContent);
-
-    // 3) Parche React inmediato (si está disponible)
-    if (typeof window !== "undefined" && typeof window.__applyContentPatch === "function") {
-      window.__applyContentPatch(safeId, {
-        name: nameEdit || "",
-        img: imageUrl || "",
-        blurb: blurb || "",
-        ingredients: components || [],
-        benefits: benefits || [],
-      });
+  try {
+    // ✅ esto ya existe en App.jsx y hace upsert a Supabase
+    if (typeof window.__applyContentPatch === "function") {
+      await window.__applyContentPatch(productId, patch);
     }
 
-    alert("¡Guardado! Portada, componentes y beneficios actualizados.");
-    onClose?.();
+    // ✅ actualiza estado local para verlo sin refrescar
+    setContent?.((prev) => ({
+      ...(prev || {}),
+      [productId]: { ...(prev?.[productId] || {}), ...patch },
+    }));
+  } catch (e) {
+    console.error("Error guardando en Supabase:", e);
+  }
+}
+
+  // Agregar / eliminar testimonios
+  function handleAddTestimonial() {
+    if (!setTestimonials || !productId) return;
+    if (!newTestText.trim()) return;
+
+    const item = {
+      id: `t-${productId}-${Date.now()}`,
+      productId,
+      name: newTestName.trim(),
+      text: newTestText.trim(),
+    };
+
+    setTestimonials((prev) => [...(prev || []), item]);
+    setNewTestName("");
+    setNewTestText("");
   }
 
-  // Reset al cambiar producto
-  useEffect(() => {
-    const contentAll2 = loadJSON(STORAGE.CONTENT, {});
-    const contentFor2 = contentAll2?.[safeId] || {};
-    setNameEdit(contentFor2.name || productName || "");
-    setImageUrl(contentFor2.img || "");
-    setBlurb(contentFor2.blurb || "");
+  function handleRemoveTestimonial(id) {
+    if (!setTestimonials) return;
+    setTestimonials((prev) => (prev || []).filter((t) => t.id !== id));
+  }
 
-    setFiles(current.files || []);
-    setLinks(current.links || []);
-    setComponents(current.components || contentFor2.ingredients || []);
-    setBenefits(current.benefits || contentFor2.benefits || []);
-    setNewComp("");
-    setNewBenefit("");
-    setBulkBenefits("");
-    setTab("cover");
-  }, [current, productName, safeId]);
+  // Agregar / eliminar links de video
+  function handleAddMedia() {
+    if (!setMedia || !productId) return;
+    if (!newMediaUrl.trim()) return;
+
+    const item = {
+      id: `m-${productId}-${Date.now()}`,
+      productId,
+      label: newMediaLabel.trim() || "Video de referencia",
+      url: newMediaUrl.trim(),
+    };
+
+    setMedia((prev) => [...(prev || []), item]);
+    setNewMediaLabel("");
+    setNewMediaUrl("");
+  }
+
+  function handleRemoveMedia(id) {
+    if (!setMedia) return;
+    setMedia((prev) => (prev || []).filter((m) => m.id !== id));
+  }
+
+  // Versión de solo lectura usa el mismo texto que el admin ve en los textareas
+  const readonlyBullets = splitLines(bulletsText);
+  const readonlyIngredients = splitLines(ingredientsText);
+  const readonlyBenefits = splitLines(benefitsText);
+
+  // Normalizar media para modo lectura
+  const videoItems = productMedia
+    .map((m, idx) => {
+      const url =
+        m.url || m.link || m.href || m.videoUrl || m.src || m.enlace;
+      if (!url || typeof url !== "string") return null;
+      const label = m.label || m.title || m.nombre || `Video ${idx + 1}`;
+      return { id: m.id, url, label };
+    })
+    .filter(Boolean);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-4">
-      <div className="w-full max-w-3xl bg-white rounded-xl shadow-lg overflow-hidden">
-        {/* Header */}
-        <div className="px-4 py-3 bg-emerald-600 text-white flex items-center justify-between">
-          <h3 className="font-semibold text-sm">
-            Adjuntos / Edición —{" "}
-            <span className="opacity-90">{nameEdit || productName || safeId}</span>
-          </h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-3 py-1 text-xs bg-white text-emerald-700 rounded hover:bg-emerald-50"
-          >
-            Cerrar
-          </button>
-        </div>
-
-        {/* Tabs */}
-        <div className="px-4 pt-3">
-          <div className="inline-flex gap-1 bg-emerald-50 p-1 rounded-lg border border-emerald-200">
-            <button
-              className={`px-3 py-1.5 text-xs rounded-md ${tab === "cover" ? "bg-white border" : ""}`}
-              onClick={() => setTab("cover")}
-            >
-              Portada
-            </button>
-            <button
-              className={`px-3 py-1.5 text-xs rounded-md ${tab === "components" ? "bg-white border" : ""}`}
-              onClick={() => setTab("components")}
-            >
-              Componentes
-            </button>
-            <button
-              className={`px-3 py-1.5 text-xs rounded-md ${tab === "benefits" ? "bg-white border" : ""}`}
-              onClick={() => setTab("benefits")}
-            >
-              Beneficios
-            </button>
-            <button
-              className={`px-3 py-1.5 text-xs rounded-md ${tab === "files" ? "bg-white border" : ""}`}
-              onClick={() => setTab("files")}
-            >
-              Archivos / Links
-            </button>
-          </div>
-        </div>
-
-        {/* Body */}
-        <div className="p-4 space-y-6">
-          {/* PORTADA */}
-          {tab === "cover" && (
-            <section className="space-y-4">
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">Nombre del producto</label>
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.45)",
+        zIndex: 9999,
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        padding: 16,
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          maxWidth: 620,
+          width: "100%",
+          maxHeight: "90vh",
+          overflowY: "auto",
+          background: "#ffffff",
+          borderRadius: 20,
+          boxShadow:
+            "0 18px 45px rgba(15, 23, 42, 0.35), 0 0 0 1px rgba(148,163,184,0.25)",
+          padding: 24,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* HEADER */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 16,
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            {editMode ? (
+              <>
                 <input
-                  value={nameEdit}
-                  onChange={(e) => setNameEdit(e.target.value)}
-                  placeholder="Ej. Té Divina Original"
-                  className="w-full border rounded-lg px-3 py-2 text-sm"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Nombre del producto"
+                  style={{
+                    width: "100%",
+                    padding: "6px 10px",
+                    borderRadius: 10,
+                    border: "1px solid rgba(148,163,184,0.6)",
+                    fontSize: 16,
+                    fontWeight: 600,
+                    color: "#065f46",
+                    marginBottom: 6,
+                  }}
                 />
-              </div>
-
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">Imagen (URL)</label>
-                <input
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="Pega aquí el link de la imagen (https://...)"
-                  className="w-full border rounded-lg px-3 py-2 text-sm"
-                />
-                <div className="text-[11px] text-gray-500 mt-1">
-                  Tip: También puedes <b>subir un archivo</b> y se guardará localmente (Base64).
-                </div>
-                <div className="mt-2">
-                  <input type="file" accept="image/*" onChange={onPickCoverFile} />
-                </div>
-
-                {imageUrl ? (
-                  <div className="mt-3">
-                    <img
-                      src={imageUrl}
-                      alt="Vista previa"
-                      className="w-40 h-40 object-cover rounded-lg border"
-                    />
-                  </div>
-                ) : (
-                  <p className="mt-3 text-xs text-gray-400">Sin imagen aún.</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">Descripción corta (opcional)</label>
                 <textarea
                   value={blurb}
                   onChange={(e) => setBlurb(e.target.value)}
-                  placeholder="Resumen/beneficio principal que verás en la portada."
-                  className="w-full border rounded-lg px-3 py-2 text-sm min-h-[80px]"
+                  placeholder="Descripción corta / fórmula, etc."
+                  rows={3}
+                  style={{
+                    width: "100%",
+                    padding: "6px 10px",
+                    borderRadius: 10,
+                    border: "1px solid rgba(148,163,184,0.6)",
+                    fontSize: 13,
+                    color: "#4b5563",
+                    resize: "vertical",
+                  }}
                 />
-              </div>
-            </section>
-          )}
-
-          {/* COMPONENTES */}
-          {tab === "components" && (
-            <section>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-sm font-semibold text-emerald-700">Componentes / Ingredientes</h4>
-                <span className="text-xs text-gray-500">Total: {components.length}</span>
-              </div>
-              <div className="flex gap-2">
-                <input
-                  value={newComp}
-                  onChange={(e) => setNewComp(e.target.value)}
-                  placeholder="Ej. Reishi (Ganoderma)"
-                  className="flex-1 border rounded-lg px-3 py-2 text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={addComponent}
-                  className="px-3 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
+              </>
+            ) : (
+              <>
+                <h2
+                  style={{
+                    margin: 0,
+                    fontSize: 22,
+                    fontWeight: 700,
+                    color: "#065f46",
+                  }}
                 >
-                  Agregar
-                </button>
-              </div>
-              {components?.length ? (
-                <ul className="mt-3 space-y-1 max-h-44 overflow-auto pr-1">
-                  {components.map((c, idx) => (
-                    <li key={idx} className="flex items-center justify-between border rounded-lg px-3 py-2 text-sm">
-                      <span className="truncate">{c}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeComponent(idx)}
-                        className="text-red-600 hover:underline text-xs"
-                      >
-                        Quitar
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-2 text-xs text-gray-500">Sin componentes aún.</p>
-              )}
-            </section>
-          )}
-
-          {/* BENEFICIOS */}
-          {tab === "benefits" && (
-            <section>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-sm font-semibold text-emerald-700">Beneficios</h4>
-                <span className="text-xs text-gray-500">Total: {benefits.length}</span>
-              </div>
-
-              <div className="flex gap-2">
-                <input
-                  value={newBenefit}
-                  onChange={(e) => setNewBenefit(e.target.value)}
-                  placeholder="Ej. Control del apetito"
-                  className="flex-1 border rounded-lg px-3 py-2 text-sm"
-                />
-                <button
-                  type="button"
-                  onClick={addBenefit}
-                  className="px-3 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
-                >
-                  Agregar
-                </button>
-              </div>
-
-              <div className="mt-3">
-                <label className="block text-xs text-gray-600 mb-1">
-                  Pegado masivo (una línea por beneficio)
-                </label>
-                <textarea
-                  value={bulkBenefits}
-                  onChange={(e) => setBulkBenefits(e.target.value)}
-                  placeholder={"Ej.\nApoya la digestión\nAumenta energía\nMejora enfoque"}
-                  className="w-full border rounded-lg px-3 py-2 text-sm min-h-[90px]"
-                />
-                <div className="mt-2">
-                  <button
-                    type="button"
-                    onClick={addBulkBenefits}
-                    className="px-3 py-2 text-sm rounded-lg bg-white hover:bg-gray-50 border"
+                  {name}
+                </h2>
+                {blurb && (
+                  <p
+                    style={{
+                      marginTop: 6,
+                      fontSize: 14,
+                      color: "#4b5563",
+                      lineHeight: 1.5,
+                    }}
                   >
-                    Agregar todas las líneas
-                  </button>
-                </div>
-              </div>
+                    {blurb}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
 
-              {benefits?.length ? (
-                <ul className="mt-3 space-y-1 max-h-44 overflow-auto pr-1">
-                  {benefits.map((b, idx) => (
-                    <li key={idx} className="flex items-center justify-between border rounded-lg px-3 py-2 text-sm">
-                      <span className="truncate">{b}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeBenefit(idx)}
-                        className="text-red-600 hover:underline text-xs"
-                      >
-                        Quitar
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-2 text-xs text-gray-500">Sin beneficios aún.</p>
-              )}
-            </section>
-          )}
-
-          {/* ARCHIVOS / LINKS */}
-          {tab === "files" && (
-            <section>
-              <h4 className="text-sm font-semibold text-emerald-700 mb-2">Archivos</h4>
-              <input type="file" multiple onChange={onAddFiles} />
-              {files?.length ? (
-                <ul className="mt-3 space-y-1 max-h-44 overflow-auto pr-1">
-                  {files.map((f, idx) => (
-                    <li key={idx} className="flex items-center justify-between border rounded-lg px-3 py-2 text-sm">
-                      <span className="truncate">
-                        {f.name}{" "}
-                        <span className="text-xs text-gray-500">({f.type || "archivo"})</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => onRemoveFile(idx)}
-                        className="text-red-600 hover:underline text-xs"
-                      >
-                        Quitar
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-2 text-xs text-gray-500">Aún no hay archivos adjuntos.</p>
-              )}
-
-              <h4 className="text-sm font-semibold text-emerald-700 mt-4 mb-2">Enlaces</h4>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={onAddLink}
-                  className="px-3 py-2 text-sm rounded-lg bg-white hover:bg-gray-50 border"
-                >
-                  Agregar enlace
-                </button>
-              </div>
-              {links?.length ? (
-                <ul className="mt-3 space-y-1 max-h-44 overflow-auto pr-1">
-                  {links.map((l, idx) => (
-                    <li key={idx} className="flex items-center justify-between border rounded-lg px-3 py-2 text-sm">
-                      <a href={l.url} target="_blank" rel="noreferrer" className="text-emerald-700 underline truncate">
-                        {l.label || l.url}
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => onRemoveLink(idx)}
-                        className="text-red-600 hover:underline text-xs"
-                      >
-                        Quitar
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-2 text-xs text-gray-500">Aún no hay enlaces.</p>
-              )}
-            </section>
+          {product.img && (
+            <div
+              style={{
+                flexShrink: 0,
+                width: 96,
+                height: 96,
+                borderRadius: 14,
+                overflow: "hidden",
+                border: "1px solid rgba(148,163,184,0.4)",
+                background: "#f9fafb",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <img
+                src={product.img}
+                alt={name}
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "100%",
+                  objectFit: "contain",
+                }}
+              />
+            </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-4 py-3 bg-gray-50 border-t flex items-center justify-end gap-2">
+        {/* PUNTOS CLAVE */}
+        <section style={{ marginTop: 16 }}>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: 15,
+              fontWeight: 600,
+              color: "#065f46",
+            }}
+          >
+            Puntos clave
+          </h3>
+          {editMode ? (
+            <textarea
+              value={bulletsText}
+              onChange={(e) => setBulletsText(e.target.value)}
+              placeholder="Escribe un punto por línea"
+              rows={4}
+              style={{
+                width: "100%",
+                marginTop: 6,
+                padding: "6px 10px",
+                borderRadius: 10,
+                border: "1px solid rgba(148,163,184,0.6)",
+                fontSize: 13,
+                color: "#374151",
+                resize: "vertical",
+              }}
+            />
+          ) : readonlyBullets.length > 0 ? (
+            <ul
+              style={{
+                margin: "6px 0 0",
+                paddingLeft: 18,
+                fontSize: 13,
+                color: "#374151",
+              }}
+            >
+              {readonlyBullets.map((b, idx) => (
+                <li key={idx}>{b}</li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+
+        {/* INGREDIENTES */}
+        <section style={{ marginTop: 16 }}>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: 15,
+              fontWeight: 600,
+              color: "#065f46",
+            }}
+          >
+            Ingredientes destacados
+          </h3>
+          {editMode ? (
+            <textarea
+              value={ingredientsText}
+              onChange={(e) => setIngredientsText(e.target.value)}
+              placeholder="Escribe un ingrediente por línea"
+              rows={4}
+              style={{
+                width: "100%",
+                marginTop: 6,
+                padding: "6px 10px",
+                borderRadius: 10,
+                border: "1px solid rgba(148,163,184,0.6)",
+                fontSize: 13,
+                color: "#374151",
+                resize: "vertical",
+              }}
+            />
+          ) : readonlyIngredients.length > 0 ? (
+            <p
+              style={{
+                marginTop: 6,
+                fontSize: 13,
+                color: "#374151",
+                lineHeight: 1.5,
+              }}
+            >
+              {readonlyIngredients.join(" · ")}
+            </p>
+          ) : null}
+        </section>
+
+        {/* BENEFICIOS */}
+        <section style={{ marginTop: 16 }}>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: 15,
+              fontWeight: 600,
+              color: "#065f46",
+            }}
+          >
+            Beneficios esperados
+          </h3>
+          {editMode ? (
+            <textarea
+              value={benefitsText}
+              onChange={(e) => setBenefitsText(e.target.value)}
+              placeholder="Escribe un beneficio por línea"
+              rows={4}
+              style={{
+                width: "100%",
+                marginTop: 6,
+                padding: "6px 10px",
+                borderRadius: 10,
+                border: "1px solid rgba(148,163,184,0.6)",
+                fontSize: 13,
+                color: "#374151",
+                resize: "vertical",
+              }}
+            />
+          ) : readonlyBenefits.length > 0 ? (
+            <ul
+              style={{
+                margin: "6px 0 0",
+                paddingLeft: 18,
+                fontSize: 13,
+                color: "#374151",
+              }}
+            >
+              {readonlyBenefits.map((b, idx) => (
+                <li key={idx}>{b}</li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+{/* CONFIGURACIÓN DEL PAQUETE (solo admin) */}
+{editMode && (
+  <section style={{ marginTop: 16 }}>
+    <h3
+      style={{
+        margin: 0,
+        fontSize: 14,
+        fontWeight: 600,
+        color: "#065f46",
+      }}
+    >
+      Paquete
+    </h3>
+    <div
+      style={{
+        marginTop: 6,
+        fontSize: 12,
+        color: "#4b5563",
+      }}
+    >
+      <label>
+        Piezas incluidas en este paquete:
+        <input
+          type="number"
+          min="1"
+          value={packageUnits}
+         onChange={(e) => setPackageUnits(e.target.value === "" ? "" : Number(e.target.value))}
+          style={{
+            marginLeft: 8,
+            width: 80,
+            padding: "4px 8px",
+            borderRadius: 8,
+            border: "1px solid rgba(148,163,184,0.8)",
+            fontSize: 12,
+          }}
+        />
+      </label>
+      <div style={{ marginTop: 4, color: "#9ca3af" }}>
+        Ejemplo: 12 sobres, 4 frascos, 6 piezas, etc.
+      </div>
+    </div>
+  </section>
+)}
+
+
+        {/* TESTIMONIOS */}
+        <section style={{ marginTop: 20 }}>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: 15,
+              fontWeight: 600,
+              color: "#065f46",
+            }}
+          >
+            Testimonios de clientes
+          </h3>
+
+          {editMode ? (
+            <>
+              {productTestimonials.length > 0 && (
+                <div
+                  style={{
+                    marginTop: 8,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 8,
+                  }}
+                >
+                  {productTestimonials.map((t) => (
+                    <div
+                      key={t.id}
+                      style={{
+                        padding: 8,
+                        borderRadius: 10,
+                        border: "1px solid rgba(209,213,219,0.9)",
+                        background: "#f9fafb",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 8,
+                          alignItems: "center",
+                        }}
+                      >
+                        <div style={{ flex: 1 }}>
+                          <div
+                            style={{
+                              fontSize: 13,
+                              color: "#111827",
+                            }}
+                          >
+                            {t.text}
+                          </div>
+                          {t.name && (
+                            <div
+                              style={{
+                                marginTop: 2,
+                                fontSize: 12,
+                                color: "#6b7280",
+                              }}
+                            >
+                              — {t.name}
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTestimonial(t.id)}
+                          style={{
+                            border: "none",
+                            background: "transparent",
+                            fontSize: 11,
+                            color: "#b91c1c",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Nuevo testimonio */}
+              <div
+                style={{
+                  marginTop: 8,
+                  padding: 10,
+                  borderRadius: 12,
+                  border: "1px dashed rgba(148,163,184,0.9)",
+                  background: "#f9fafb",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                }}
+              >
+                <input
+                  value={newTestName}
+                  onChange={(e) => setNewTestName(e.target.value)}
+                  placeholder="Nombre del cliente (opcional)"
+                  style={{
+                    width: "100%",
+                    padding: "6px 10px",
+                    borderRadius: 8,
+                    border: "1px solid rgba(209,213,219,0.9)",
+                    fontSize: 12,
+                  }}
+                />
+                <textarea
+                  value={newTestText}
+                  onChange={(e) => setNewTestText(e.target.value)}
+                  placeholder="Escribe el testimonio aquí..."
+                  rows={3}
+                  style={{
+                    width: "100%",
+                    padding: "6px 10px",
+                    borderRadius: 8,
+                    border: "1px solid rgba(209,213,219,0.9)",
+                    fontSize: 12,
+                    resize: "vertical",
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={handleAddTestimonial}
+                  style={{
+                    alignSelf: "flex-end",
+                    marginTop: 2,
+                    padding: "6px 12px",
+                    borderRadius: 999,
+                    border: "none",
+                    background:
+                      "linear-gradient(135deg,#22c55e,#16a34a,#22c55e)",
+                    color: "white",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Añadir testimonio
+                </button>
+              </div>
+            </>
+          ) : productTestimonials.length > 0 ? (
+            <div
+              style={{
+                marginTop: 8,
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+              }}
+            >
+              {productTestimonials.map((t) => (
+                <div
+                  key={t.id}
+                  style={{
+                    padding: 10,
+                    borderRadius: 12,
+                    border: "1px solid rgba(209,213,219,0.9)",
+                    background: "#f9fafb",
+                  }}
+                >
+                  {t.text && (
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: 13,
+                        color: "#374151",
+                      }}
+                    >
+                      “{t.text}”
+                    </p>
+                  )}
+                  {t.name && (
+                    <p
+                      style={{
+                        margin: "4px 0 0",
+                        fontSize: 12,
+                        color: "#6b7280",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      — {t.name}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : !editMode ? (
+            <p
+              style={{
+                marginTop: 6,
+                fontSize: 13,
+                color: "#9ca3af",
+              }}
+            >
+              Aún no hay testimonios para este producto.
+            </p>
+          ) : null}
+        </section>
+
+        {/* VIDEOS / LINKS */}
+        <section style={{ marginTop: 20 }}>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: 15,
+              fontWeight: 600,
+              color: "#065f46",
+            }}
+          >
+            Videos y recursos de referencia
+          </h3>
+
+          {editMode ? (
+            <>
+              {videoItems.length > 0 && (
+                <ul
+                  style={{
+                    margin: "6px 0 0",
+                    paddingLeft: 18,
+                    fontSize: 13,
+                  }}
+                >
+                  {videoItems.map((v) => (
+                    <li
+                      key={v.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 8,
+                      }}
+                    >
+                      <span>{v.label}</span>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <a
+                          href={v.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            fontSize: 11,
+                            textDecoration: "underline",
+                          }}
+                        >
+                          Abrir
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMedia(v.id)}
+                          style={{
+                            border: "none",
+                            background: "transparent",
+                            fontSize: 11,
+                            color: "#b91c1c",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {/* Nuevo link */}
+              <div
+                style={{
+                  marginTop: 8,
+                  padding: 10,
+                  borderRadius: 12,
+                  border: "1px dashed rgba(148,163,184,0.9)",
+                  background: "#f9fafb",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                }}
+              >
+                <input
+                  value={newMediaLabel}
+                  onChange={(e) => setNewMediaLabel(e.target.value)}
+                  placeholder="Título del video / recurso"
+                  style={{
+                    width: "100%",
+                    padding: "6px 10px",
+                    borderRadius: 8,
+                    border: "1px solid rgba(209,213,219,0.9)",
+                    fontSize: 12,
+                  }}
+                />
+                <input
+                  value={newMediaUrl}
+                  onChange={(e) => setNewMediaUrl(e.target.value)}
+                  placeholder="URL (YouTube, TikTok, PDF, etc.)"
+                  style={{
+                    width: "100%",
+                    padding: "6px 10px",
+                    borderRadius: 8,
+                    border: "1px solid rgba(209,213,219,0.9)",
+                    fontSize: 12,
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={handleAddMedia}
+                  style={{
+                    alignSelf: "flex-end",
+                    marginTop: 2,
+                    padding: "6px 12px",
+                    borderRadius: 999,
+                    border: "none",
+                    background:
+                      "linear-gradient(135deg,#22c55e,#16a34a,#22c55e)",
+                    color: "white",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Añadir link
+                </button>
+              </div>
+            </>
+          ) : videoItems.length > 0 ? (
+            <ul
+              style={{
+                margin: "6px 0 0",
+                paddingLeft: 18,
+                fontSize: 13,
+              }}
+            >
+              {videoItems.map((v) => (
+                <li key={v.id}>
+                  <a
+                    href={v.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ textDecoration: "underline" }}
+                  >
+                    {v.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : !editMode ? (
+            <p
+              style={{
+                marginTop: 6,
+                fontSize: 13,
+                color: "#9ca3af",
+              }}
+            >
+              Aún no hay videos ni recursos de referencia para
+              este producto.
+            </p>
+          ) : null}
+        </section>
+
+        {/* BOTONES INFERIORES */}
+        <div
+          style={{
+            marginTop: 22,
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 10,
+          }}
+        >
+          {editMode && (
+            <button
+              type="button"
+              onClick={handleSaveProductText}
+              style={{
+                padding: "8px 16px",
+                borderRadius: 999,
+                border: "none",
+                background: "#e5f9ed",
+                color: "#166534",
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Guardar texto
+            </button>
+          )}
           <button
-            type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm rounded-lg bg-white hover:bg-gray-100 border"
+            style={{
+              padding: "8px 18px",
+              borderRadius: 999,
+              border: "none",
+              background:
+                "linear-gradient(135deg, #22c55e, #16a34a, #22c55e)",
+              color: "white",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
           >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            className="px-4 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
-          >
-            Guardar
+            Cerrar
           </button>
         </div>
       </div>
     </div>
   );
 }
-
-
-

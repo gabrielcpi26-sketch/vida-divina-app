@@ -1,10 +1,5 @@
 // src/components/SmartAssessorPro.jsx
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useRef,
-} from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import {
@@ -40,8 +35,6 @@ function getSmartWhatsAppNumber() {
 // =====================
 // Helpers de perfil / IMC
 // =====================
-
-// Intenta leer peso desde distintos nombres
 function getWeightKg(profile = {}) {
   return Number(
     profile.weight ??
@@ -53,7 +46,6 @@ function getWeightKg(profile = {}) {
   );
 }
 
-// Intenta leer altura en cm desde distintos nombres
 function getHeightCm(profile = {}) {
   return Number(
     profile.height ??
@@ -116,47 +108,151 @@ function describeIMC(imc, profile) {
         "Se requiere un protocolo más estructurado: detox, control metabólico y acompañamiento diario.",
     };
   return {
-    label: "Obesidad grado II/III",
+    label: "Obesidad II",
     kilosExtra: diff,
     text:
       "Es importante combinar productos específicos con seguimiento cercano. Este análisis no reemplaza una valoración médica.",
   };
 }
 
-// Recomendación de agua (≈ 33 ml/kg + ajuste por IMC)
 function getWaterRecommendation(profile, imc) {
   const kg = getWeightKg(profile);
   if (!kg) return null;
 
-  let liters = kg * 0.033; // 33 ml por kg
-  if (imc != null && imc >= 30) liters += 0.3; // un extra si hay obesidad
-  liters = Math.min(Math.max(liters, 1.5), 4); // entre 1.5 y 4 L
-
+  let liters = kg * 0.033;
+  if (imc != null && imc >= 30) liters += 0.3;
+  liters = Math.min(Math.max(liters, 1.5), 4);
   return Number(liters.toFixed(1));
 }
 
-// =====================
-// Reglas de productos
-// =====================
+// ===============================
+// FASE 0.1 - IMC exacto + Scoring
+// ===============================
+function toNumberSafe(v) {
+  const n = Number(String(v).replace(",", "."));
+  return Number.isFinite(n) ? n : 0;
+}
 
+function bmiCategoryAdvanced(bmi) {
+  const x = toNumberSafe(bmi);
+  if (!x) return { key: "unknown", label: "No disponible" };
+  if (x < 18.5) return { key: "under", label: "Bajo peso" };
+  if (x < 25) return { key: "normal", label: "Normal" };
+  if (x < 30) return { key: "over", label: "Sobrepeso" };
+  if (x < 35) return { key: "ob1", label: "Obesidad I" };
+  return { key: "ob2", label: "Obesidad II" };
+}
+
+function computeHealthScore({ bmi, age, sex, objective }) {
+  let score = 100;
+
+  const a = toNumberSafe(age);
+  const b = toNumberSafe(bmi);
+
+  const dist = Math.abs(b - 22);
+  score -= dist * 2;
+
+  if (a >= 30) score -= (a - 29) * 0.4;
+
+  const s = String(sex || "").toLowerCase();
+  if (s.includes("muj")) score += 1;
+  if (s.includes("hom") || s.includes("masc")) score -= 1;
+
+  const obj = String(objective || "").toLowerCase();
+  if (obj.includes("quemar") || obj.includes("grasa")) score -= 2;
+  if (obj.includes("energ")) score -= 1;
+
+  score = Math.max(0, Math.min(100, Math.round(score)));
+
+  let risk = "Bajo";
+  if (bmiCategoryAdvanced(b).key === "over") risk = "Moderado";
+  if (bmiCategoryAdvanced(b).key === "ob1") risk = "Alto";
+  if (bmiCategoryAdvanced(b).key === "ob2") risk = "Muy alto";
+  if (bmiCategoryAdvanced(b).key === "under") risk = "Moderado";
+
+  let profile = "Equilibrado";
+  if (bmiCategoryAdvanced(b).key === "under") profile = "Bajo peso / posible déficit";
+  if (bmiCategoryAdvanced(b).key === "over") profile = "Tendencia a acumulación";
+  if (bmiCategoryAdvanced(b).key === "ob1" || bmiCategoryAdvanced(b).key === "ob2")
+    profile = "Resistencia metabólica probable";
+
+  return { healthScore: score, metabolicRisk: risk, metabolicProfile: profile };
+}
+
+// =====================
+// Objetivos: NORMALIZACIÓN (QUIZ -> KEYS INTERNAS)
+// =====================
+function normalizeGoalKey(profile = {}) {
+  const raw = (profile.goal ?? profile.objetivo ?? "").toString().trim();
+  const x = raw.toLowerCase();
+
+  // IDs exactos del ImcQuiz.jsx (compatibilidad)
+  if (x === "control_peso") return "bajar_grasa";
+  if (x === "estres_sueno") return "estres";
+
+  // Ya viene como key interna
+  if (
+    x === "bajar_grasa" ||
+    x === "aumentar_musculo" ||
+    x === "energia" ||
+    x === "digestion" ||
+    x === "estres" ||
+    x === "piel" ||
+    x === "hormonal"
+  ) {
+    return x;
+  }
+
+  // Mapeo desde ImcQuiz.jsx (texto)
+  if (x.includes("bajar grasa") || x.includes("quemar grasa") || x.includes("control de peso"))
+    return "bajar_grasa";
+  if (x.includes("ganar músculo") || x.includes("tonificar") || x.includes("músculo"))
+    return "aumentar_musculo";
+  if (x.includes("energía") || x.includes("enfoque") || x.includes("rendimiento"))
+    return "energia";
+  if (x.includes("digestión") || x.includes("inflam")) return "digestion";
+  if (x.includes("estrés") || x.includes("estres") || x.includes("dormir") || x.includes("ansiedad"))
+    return "estres";
+  if (x.includes("piel") || x.includes("cabello") || x.includes("uñas")) return "piel";
+  if (x.includes("horm") || x.includes("ciclo") || x.includes("menop")) return "hormonal";
+
+  return "bajar_grasa";
+}
+
+function displayGoalLabel(goalKey) {
+  if (goalKey === "bajar_grasa") return "Bajar grasa / control de peso";
+  if (goalKey === "aumentar_musculo") return "Aumentar músculo / tonificar";
+  if (goalKey === "energia") return "Energía y rendimiento";
+  if (goalKey === "digestion") return "Digestión y desinflamación";
+  if (goalKey === "estres") return "Estrés y descanso";
+  if (goalKey === "piel") return "Piel, cabello y uñas";
+  if (goalKey === "hormonal") return "Hormonas y ciclo";
+  return "Bienestar general";
+}
+
+// =====================
+// Tags/benefits esperados por objetivo (matching real)
+// =====================
+const GOAL_BENEFIT_TAGS = {
+  bajar_grasa: ["fatloss", "metabolism", "appetite", "detox", "glucose", "digestion"],
+  aumentar_musculo: ["muscle", "protein", "recovery", "energy"],
+  energia: ["energy", "focus", "performance", "memory"],
+  digestion: ["digestion", "antiinflamatorio", "detox", "bloating", "gut"],
+  estres: ["stress", "sleep", "calm", "anxiety", "relax", "descanso"],
+  piel: ["skin", "collagen", "hydration"],
+  hormonal: ["hormonal", "cycle", "menopause", "ciclo", "hormonas", "pms", "menopausia", "balance"],
+};
+
+// =====================
+// Reglas de productos (tu base)
+// =====================
 const GOAL_RULES = {
   bajar_grasa: {
-    prefer: [
-      "te_divina_original",
-      "te_divina_latte_verde",
-      "atom",
-      "factor_divina",
-      "capsulas_metabolicas",
-    ],
+    prefer: ["te_divina_original", "te_divina_latte_verde", "atom", "factor_divina", "capsulas_metabolicas"],
     avoid: ["cafes_caloricos", "batidos_altos_carbohidratos"],
   },
   aumentar_musculo: {
-    prefer: [
-      "shake_divina",
-      "proteina_divina",
-      "extracto_maitake",
-      "extracto_mix_hongos",
-    ],
+    prefer: ["shake_divina", "proteina_divina", "extracto_maitake", "extracto_mix_hongos"],
     avoid: ["te_diuretico_fuerte", "productos_quitan_apetito"],
   },
   energia: {
@@ -164,121 +260,127 @@ const GOAL_RULES = {
     avoid: [],
   },
   digestion: {
-    prefer: [
-      "te_divina_original",
-      "extracto_tremella",
-      "extracto_turkey_tail",
-      "factor_divina",
-    ],
+    prefer: ["te_divina_original", "extracto_tremella", "extracto_turkey_tail", "factor_divina"],
     avoid: ["productos_pesados_noche"],
   },
+  estres: { prefer: [], avoid: [] },
+  piel: { prefer: [], avoid: [] },
+  hormonal: { prefer: [], avoid: [] },
+};
+
+const GOAL_CATEGORY_BOOST = {
+  bajar_grasa: { te: 12, capsula: 8 },
+  aumentar_musculo: { batido: 14, proteina: 14 },
+  energia: { cafe: 12, capsula: 6 },
+  digestion: { te: 10, extracto: 10 },
+  estres: { extracto: 12, capsula: 8 },
+  piel: { extracto: 12, capsula: 8 },
+  hormonal: { capsula: 14, extracto: 10 }, // clave para no meter té "por relleno"
 };
 
 function getIMCRuleIds(imc) {
   if (imc == null) return [];
-  if (imc < 18.5) {
-    return ["shake_divina", "proteina_divina"]; // evitar tés fuertes
-  }
-  if (imc < 25) {
-    return ["te_divina_original", "atom"];
-  }
-  if (imc < 30) {
-    return [
-      "te_divina_original",
-      "extracto_turkey_tail",
-      "factor_divina",
-      "atom",
-    ];
-  }
-  if (imc < 35) {
-    return [
-      "te_divina_original",
-      "extracto_tremella",
-      "factor_divina",
-      "capsulas_metabolicas",
-    ];
-  }
-  return [
-    "te_divina_original",
-    "extracto_tremella",
-    "extracto_turkey_tail",
-    "factor_divina",
-    "capsulas_metabolicas",
-  ];
+  if (imc < 18.5) return ["shake_divina", "proteina_divina"];
+  if (imc < 25) return ["te_divina_original", "atom"];
+  if (imc < 30) return ["te_divina_original", "extracto_turkey_tail", "factor_divina", "atom"];
+  if (imc < 35) return ["te_divina_original", "extracto_tremella", "factor_divina", "capsulas_metabolicas"];
+  return ["te_divina_original", "extracto_tremella", "extracto_turkey_tail", "factor_divina", "capsulas_metabolicas"];
 }
 
-// Explicación breve por producto – versión “te ayuda a…”
-function reasonForProduct(p, profile, imcInfo) {
-  const goal = profile?.goal;
-  if (!p) return "";
+// Texto pro: amarra beneficio real + ingredientes si existen
+function buildReasonPro(p, imcInfo, goalKey) {
+  const benefits = Array.isArray(p.benefits) ? p.benefits : [];
+  const keywords = Array.isArray(p.keywords) ? p.keywords : [];
+  const ingredients = Array.isArray(p.ingredients) ? p.ingredients : [];
 
-  if (goal === "bajar_grasa" && p.id === "te_divina_original") {
-    return "Se elige porque te ayuda a depurar, desinflamar y limpiar tu sistema digestivo para arrancar fuerte tu proceso de bajada de grasa.";
-  }
-  if (goal === "bajar_grasa" && p.id === "atom") {
-    return "Se elige porque te ayuda a aumentar energía y activar el metabolismo con efecto termogénico, sin depender de cafés azucarados.";
-  }
-  if (goal === "bajar_grasa" && p.id === "factor_divina") {
-    return "Se elige porque te ayuda a cubrir vitaminas y minerales clave mientras haces cambios en tu alimentación.";
-  }
-  if (goal === "aumentar_musculo" && p.id === "shake_divina") {
-    return "Se elige porque te ayuda a llegar a tu proteína diaria de forma práctica y apoyar la construcción de masa muscular.";
-  }
-  if (p.category === "extracto") {
-    return "Se elige porque te ayuda a trabajar inflamación interna, defensas y equilibrio hormonal de forma más concentrada.";
-  }
-  if (p.category === "cafe") {
-    return "Se elige porque te ayuda a mejorar enfoque y rendimiento con un café funcional, no solo estimulante.";
-  }
-  return `Se elige porque te ayuda a avanzar hacia tu objetivo con tu situación actual de IMC (${imcInfo.label}).`;
+  const goalTags = GOAL_BENEFIT_TAGS[goalKey] || [];
+  const haystack = [
+    ...benefits.map((x) => String(x).toLowerCase()),
+    ...keywords.map((x) => String(x).toLowerCase()),
+    ...ingredients.map((x) => String(x).toLowerCase()),
+    String(p.category || "").toLowerCase(),
+    String(p.name || "").toLowerCase(),
+  ].join(" | ");
+
+  const hits = goalTags
+    .filter((t) => haystack.includes(String(t).toLowerCase()))
+    .slice(0, 3);
+
+  const benefitLine =
+    hits.length > 0
+      ? `Se elige por beneficios clave: ${hits.join(", ")}.`
+      : `Se elige porque encaja con tu objetivo y tu IMC (${imcInfo.label}).`;
+
+  const ingLine =
+    ingredients.length > 0
+      ? `Enfocado en: ${ingredients.slice(0, 4).join(", ")}.`
+      : "";
+
+  return `${benefitLine} ${ingLine}`.trim();
 }
 
 // =====================
 // Componente principal
 // =====================
-
 export default function SmartAssessorPro({
   profile: profileProp,
   products: productsProp,
   mergedProducts,
+  onOpenById,
 }) {
-  // Mismo orden de hooks SIEMPRE
-  const [recommendations, setRecommendations] = useState({
-    main: [],
-    secondary: [],
-    optional: [],
-  });
+  const [recommendations, setRecommendations] = useState({ main: [], secondary: [], optional: [] });
+
   const [healthScore, setHealthScore] = useState(0);
   const [progressData, setProgressData] = useState([]);
   const [monthlyPlan, setMonthlyPlan] = useState([]);
   const [showHealth, setShowHealth] = useState(false);
   const [showPlanPreview, setShowPlanPreview] = useState(false);
+  const [metabolicRisk, setMetabolicRisk] = useState("—");
+  const [metabolicProfile, setMetabolicProfile] = useState("—");
 
   const pdfRef = useRef(null);
 
   const profile = profileProp || {};
-  const products = useMemo(
-    () => productsProp || mergedProducts || [],
-    [productsProp, mergedProducts]
-  );
+  const products = useMemo(() => productsProp || mergedProducts || [], [productsProp, mergedProducts]);
 
   const imc = useMemo(() => calcIMC(profile), [profile]);
-  const imcInfo = useMemo(
-    () => describeIMC(imc, profile),
-    [imc, profile]
-  );
-  const waterLiters = useMemo(
-    () => getWaterRecommendation(profile, imc),
-    [profile, imc]
-  );
+  const imcInfo = useMemo(() => describeIMC(imc, profile), [imc, profile]);
+  const waterLiters = useMemo(() => getWaterRecommendation(profile, imc), [profile, imc]);
+  const waterGlasses = waterLiters ? Math.round((waterLiters * 1000) / 250) : null;
 
-  // vasos de 250 ml aproximados (no es hook)
-  const waterGlasses = waterLiters
-    ? Math.round((waterLiters * 1000) / 250)
-    : null;
+  const goalKey = useMemo(() => normalizeGoalKey(profile), [profile]);
+  const goalTags = GOAL_BENEFIT_TAGS[goalKey] || [];
+
 
   // -----------------------------
-  // Recomendaciones de productos
+  // HealthScore (computeHealthScore)
+  // -----------------------------
+  useEffect(() => {
+    if (imc == null) {
+      setHealthScore(0);
+      setMetabolicRisk("—");
+      setMetabolicProfile("—");
+      return;
+    }
+
+    const age = profile.age ?? profile.edad ?? 0;
+    const sex = profile.sex ?? profile.sexo ?? "";
+    const objective = profile.objetivo ?? profile.goal ?? "";
+
+    const { healthScore, metabolicRisk, metabolicProfile } = computeHealthScore({
+      bmi: imc,
+      age,
+      sex,
+      objective,
+    });
+
+    setHealthScore(healthScore);
+    setMetabolicRisk(metabolicRisk);
+    setMetabolicProfile(metabolicProfile);
+  }, [profile, imc]);
+
+  // -----------------------------
+  // Recomendaciones de productos (DEFINITIVO PRO)
   // -----------------------------
   useEffect(() => {
     if (!products || products.length === 0) {
@@ -286,60 +388,370 @@ export default function SmartAssessorPro({
       return;
     }
 
-    const goal = profile.goal || "bajar_grasa";
-    const rule = GOAL_RULES[goal] || GOAL_RULES.bajar_grasa;
+    const rule = GOAL_RULES[goalKey] || GOAL_RULES.bajar_grasa;
 
     const imcIds = getIMCRuleIds(imc);
     const preferIds = new Set([...(rule.prefer || []), ...imcIds]);
 
+    const hit = (arr, tag) =>
+      Array.isArray(arr) &&
+      arr.some((x) => String(x).toLowerCase().includes(String(tag).toLowerCase()));
+
     const scored = products.map((p) => {
       let score = 0;
 
+      // =========================
+      // BASE (tu motor actual)
+      // =========================
       if (preferIds.has(p.id)) score += 40;
-      if (p.category === "te" && goal === "bajar_grasa") score += 15;
-      if (p.category === "batido" && goal === "aumentar_musculo") score += 20;
-      if (p.category === "capsula" && goal === "bajar_grasa") score += 10;
-      if (p.tags?.includes("detox")) score += 10;
-      if (p.tags?.includes("energia") && goal === "energia") score += 15;
 
-      const avoidList = rule.avoid || [];
-      if (avoidList.includes(p.id) || p.tags?.includes("evitar")) {
-        score -= 100;
+      if (p.category === "te" && goalKey === "bajar_grasa") score += 15;
+      if (p.category === "batido" && goalKey === "aumentar_musculo") score += 20;
+      if (p.category === "capsula" && goalKey === "bajar_grasa") score += 10;
+
+      if (p.tags?.includes("detox")) score += 10;
+      if (p.tags?.includes("energia") && goalKey === "energia") score += 15;
+
+      // =========================
+      // PRO (matching real por datos)
+      // =========================
+      const benefits = Array.isArray(p.benefits) ? p.benefits : [];
+      const keywords = Array.isArray(p.keywords) ? p.keywords : [];
+      const bullets = Array.isArray(p.bullets) ? p.bullets : [];
+      const ingredients = Array.isArray(p.ingredients) ? p.ingredients : [];
+
+      const catBoost = GOAL_CATEGORY_BOOST[goalKey] || {};
+      if (catBoost[p.category]) score += catBoost[p.category];
+
+      const hasSignals =
+        (Array.isArray(p.benefits) && p.benefits.length > 0) ||
+        (Array.isArray(p.keywords) && p.keywords.length > 0) ||
+        (Array.isArray(p.bullets) && p.bullets.length > 0) ||
+        (Array.isArray(p.ingredients) && p.ingredients.length > 0) ||
+        (Array.isArray(p.tags) && p.tags.length > 0);
+
+      let goalHits = 0;
+      goalTags.forEach((t) => {
+        if (hit(benefits, t)) goalHits += 1;
+        else if (hit(keywords, t)) goalHits += 0.7;
+        else if (hit(ingredients, t)) goalHits += 0.4;
+        else if (hit(bullets, t)) goalHits += 0.4;
+      });
+
+      // matching fuerte objetivo
+      score += goalHits * 18;
+
+      // ---- haystack completo (para reglas maestras) ----
+      const cat = String(p.category || "").toLowerCase();
+      const nm = String(p.name || "").toLowerCase();
+      const hay = [
+        ...benefits.map((x) => String(x).toLowerCase()),
+        ...keywords.map((x) => String(x).toLowerCase()),
+        ...ingredients.map((x) => String(x).toLowerCase()),
+        ...bullets.map((x) => String(x).toLowerCase()),
+        ...((Array.isArray(p.tags) ? p.tags : []).map((x) => String(x).toLowerCase())),
+        cat,
+        nm,
+      ].join(" | ");
+
+
+
+      // ======================================
+      // 🔥 REGLAS MAESTRAS POR OBJETIVO (100%)
+      // ======================================
+      // A) Estrés/descanso: subir calmantes, bajar estimulantes
+      if (goalKey === "estres") {
+        const calmCore = ["sleep", "melatonina", "relax", "descanso", "calm", "ansiedad", "stress"];
+        const stimulantCore = ["cafe", "café", "energia", "energy", "preworkout", "estimul"];
+        const hasCalm = calmCore.some((t) => hay.includes(t));
+        const hasStim = stimulantCore.some((t) => hay.includes(t));
+        if (hasCalm) score += 45;
+        if (hasStim) score -= 50;
       }
 
-      return { ...p, score };
+      // B) Quemar grasa: subir metabolismo/detox/glucosa, bajar "masa/volumen"
+      if (goalKey === "bajar_grasa") {
+        const fatCore = ["fatloss", "metabolism", "metabol", "termogen", "glucose", "appetite", "detox", "grasa", "quemar"];
+        const muscleCore = ["masa", "volumen", "bulking"];
+        if (fatCore.some((t) => hay.includes(t))) score += 40;
+        if (muscleCore.some((t) => hay.includes(t))) score -= 15;
+      }
+
+      // C) Músculo: subir proteína/recuperación, bajar sleep/relax como TOP
+      if (goalKey === "aumentar_musculo") {
+        const muscleCore = ["protein", "proteina", "proteína", "muscle", "masa", "recovery", "recuper"];
+        const relaxCore = ["sleep", "melatonina", "relax", "calm"];
+        if (muscleCore.some((t) => hay.includes(t))) score += 45;
+        if (relaxCore.some((t) => hay.includes(t))) score -= 15;
+      }
+
+      // D) Energía: subir energía/focus, bajar sleep como TOP
+      if (goalKey === "energia") {
+        const energyCore = ["energy", "energ", "focus", "performance", "rendimiento"];
+        const sleepCore = ["sleep", "melatonina"];
+        if (energyCore.some((t) => hay.includes(t))) score += 35;
+        if (sleepCore.some((t) => hay.includes(t))) score -= 20;
+      }
+
+      // E) Digestión: subir digestion/antiinflamatorio/gut/fibra
+      if (goalKey === "digestion") {
+        const digestCore = ["digestion", "digest", "antiinflam", "gut", "bloating", "fibra", "intestin", "inflam", "detox"];
+        if (digestCore.some((t) => hay.includes(t))) score += 45;
+      }
+
+      // ======================================
+      // Afinación hormonal (anti-proteína genérica)
+      // ======================================
+      const isProteinLike =
+        cat.includes("prote") ||
+        cat.includes("batido") ||
+        hay.includes("proteína") ||
+        hay.includes("proteina") ||
+        hay.includes("protein") ||
+        nm.includes("pure");
+
+      if (goalKey === "hormonal" && isProteinLike && goalHits === 0) {
+        score -= 35;
+      }
+
+      const hormonalCore = ["hormonal", "ciclo", "cycle", "menopause", "menopausia", "pms", "maca", "tongkat", "adaptog"];
+      const hasHormonalCore = hormonalCore.some((t) => hay.includes(t));
+
+      if (goalKey === "hormonal" && isProteinLike && !hasHormonalCore) {
+        score -= 120;
+      }
+
+      // ======================================
+      // Regla MAESTRA de coherencia (definitiva)
+      // Producto sin relación directa NO debe ser TOP
+      // ======================================
+      if (goalHits === 0) score -= 25;
+
+      // Extra fino: en hormonal, evita que “tés” sin señal hormonal suban por default
+      if (goalKey === "hormonal" && cat === "te" && goalHits === 0) score -= 10;
+
+      // Match por needs del quiz (si vienen)
+      const needs = profile.needs || {};
+      Object.keys(needs).forEach((k) => {
+        if (!needs[k]) return;
+        if (hit(benefits, k) || hit(keywords, k)) score += 10;
+      });
+
+      // =========================
+      // IMC Rules definitivas
+      // =========================
+      if (imc != null && imc < 25) {
+        if (hit(benefits, "detox") || hit(keywords, "detox")) score -= 4;
+        if (hit(benefits, "hydration") || hit(keywords, "hydration")) score += 3;
+        if (hit(benefits, "digestion") || hit(keywords, "digestion")) score += 4;
+      }
+
+      if (imc != null && imc >= 25 && imc < 30) {
+        if (hit(benefits, "digestion") || hit(keywords, "digestion")) score += 6;
+        if (hit(benefits, "antiinflamatorio") || hit(keywords, "antiinflamatorio")) score += 6;
+        if (hit(benefits, "metabolism") || hit(keywords, "metabolism")) score += 5;
+        if (hit(benefits, "appetite") || hit(keywords, "appetite")) score += 4;
+      }
+
+      if (imc != null && imc >= 30) {
+        if (hit(benefits, "fatloss") || hit(keywords, "fatloss")) score += 10;
+        if (hit(benefits, "glucose") || hit(keywords, "glucose")) score += 8;
+        if (hit(benefits, "metabolism") || hit(keywords, "metabolism")) score += 8;
+        if (hit(benefits, "detox") || hit(keywords, "detox")) score += 6;
+      }
+
+      // Ajustes suaves por riesgo/perfil
+      const age = profile.age ?? profile.edad ?? 0;
+      if (metabolicRisk === "Alto") score += 4;
+      if (metabolicRisk === "Muy alto") score += 6;
+      if (String(metabolicProfile).toLowerCase().includes("acumulación")) score += 3;
+      if (String(metabolicProfile).toLowerCase().includes("resistencia")) score += 4;
+      if (age >= 40) score += 2;
+
+      // =========================
+      // NO recomendar “paquetes” sin info real
+      // =========================
+      const isPack =
+        p.category === "afiliacion" ||
+        String(p.id || "").startsWith("paq_") ||
+        String(p.name || "").toLowerCase().includes("paquete");
+
+      if (isPack && !hasSignals) score -= 300;
+
+      // Penalización por evitar (igual que antes)
+      const avoidList = rule?.avoid || [];
+      if (avoidList.includes(p.id) || p.tags?.includes("evitar")) score -= 100;
+
+      return { ...p, score, _hasSignals: hasSignals, _isPack: isPack };
     });
 
-    const valid = scored
-      .filter((p) => p.score > 0)
-      .sort((a, b) => b.score - a.score);
+    // =======================================
+    // Regla maestra: asegurar "núcleo" del objetivo en TOP
+    // =======================================
+    const coreTagsByGoal = {
+      bajar_grasa: ["fatloss", "metabolism", "glucose", "appetite", "detox"],
+      aumentar_musculo: ["muscle", "protein", "recovery"],
+      energia: ["energy", "focus", "performance"],
+      digestion: ["digestion", "antiinflamatorio", "gut", "bloating", "fibra"],
+      estres: ["stress", "sleep", "calm", "anxiety", "relax", "descanso"],
+      piel: ["skin", "collagen", "hydration"],
+      hormonal: ["hormonal", "cycle", "menopause", "pms", "ciclo", "hormonas"],
+    };
 
-    const main = valid.slice(0, 3);
-    const secondary = valid.slice(3, 6);
-    const optional = valid.slice(6, 9);
+    const coreTags = coreTagsByGoal[goalKey] || [];
+    const corePick = scored.find((p) => {
+      if (p._isPack) return false;
+      const b = Array.isArray(p.benefits) ? p.benefits : [];
+      const k = Array.isArray(p.keywords) ? p.keywords : [];
+      const i = Array.isArray(p.ingredients) ? p.ingredients : [];
+      const u = Array.isArray(p.bullets) ? p.bullets : [];
+      const text = [...b, ...k, ...i, ...u, p.name, p.category]
+        .map((x) => String(x).toLowerCase())
+        .join(" | ");
+      return coreTags.some((t) => text.includes(String(t).toLowerCase()));
+    });
 
-    setRecommendations({ main, secondary, optional });
-  }, [products, profile, imc]);
-
-  // -----------------------------
-  // HealthScore
-  // -----------------------------
-  useEffect(() => {
-    let score = 60;
-
-    if (profile.goal === "bajar_grasa") score += 10;
-    if (profile.goal === "aumentar_musculo") score += 8;
-
-    if (imc != null) {
-      if (imc < 18.5) score -= 5;
-      else if (imc < 25) score += 5;
-      else if (imc < 30) score -= 2;
-      else if (imc >= 30) score -= 8;
+    if (corePick) {
+      const idx = scored.findIndex((x) => x.id === corePick.id);
+      if (idx >= 0) scored[idx] = { ...scored[idx], score: scored[idx].score + 25 };
     }
 
-    score = Math.max(0, Math.min(100, score));
-    setHealthScore(score);
-  }, [profile, imc]);
+// =======================================
+// 🔥 REGLA PRO DEFINITIVA: FORZAR NÚCLEO TERAPÉUTICO REAL
+// =======================================
+
+const STRICT_CORE_TAGS = {
+  estres: ["sleep", "relax", "calm", "descanso", "melatonina", "anxiety", "stress"],
+  energia: ["energy", "focus", "rendimiento", "performance", "energia"],
+  aumentar_musculo: ["protein", "proteina", "muscle", "recovery"],
+  bajar_grasa: ["fatloss", "metabolism", "grasa", "termogen", "glucose"],
+  digestion: ["digestion", "gut", "antiinflam", "fibra"],
+  hormonal: ["hormonal", "cycle", "menopause", "ciclo", "hormonas"],
+};
+
+const strictTags = STRICT_CORE_TAGS[goalKey] || [];
+
+scored.forEach((p) => {
+  if (p._isPack) return;
+
+  const b = Array.isArray(p.benefits) ? p.benefits : [];
+  const k = Array.isArray(p.keywords) ? p.keywords : [];
+  const i = Array.isArray(p.ingredients) ? p.ingredients : [];
+  const u = Array.isArray(p.bullets) ? p.bullets : [];
+
+  const text = [...b, ...k, ...i, ...u, p.name, p.category]
+    .map((x) => String(x).toLowerCase())
+    .join(" | ");
+
+  const hasStrictCore = strictTags.some((t) =>
+    text.includes(String(t).toLowerCase())
+  );
+
+  // Si NO tiene núcleo real del objetivo → penalización fuerte
+  if (!hasStrictCore) {
+    p.score -= 35;
+  }
+});
+
+    // =========================
+    // Selección PRO del TOP (SIEMPRE 3)
+    // =========================
+    const sorted = [...scored].sort((a, b) => b.score - a.score);
+
+    const hasAnyInfo = (p) => {
+      return (
+        (Array.isArray(p?.benefits) && p.benefits.length > 0) ||
+        (Array.isArray(p?.keywords) && p.keywords.length > 0) ||
+        (Array.isArray(p?.bullets) && p.bullets.length > 0) ||
+        (Array.isArray(p?.ingredients) && p.ingredients.length > 0) ||
+        (Array.isArray(p?.tags) && p.tags.length > 0) ||
+        String(p?.name || "").trim().length > 0 ||
+        String(p?.category || "").trim().length > 0
+      );
+    };
+
+    const hasSignalsLoose = (p) => Boolean(p?._hasSignals) || hasAnyInfo(p);
+
+    const pickTopN = (list, n = 3) => {
+      const picks = [];
+      const seen = new Set();
+
+      const push = (p) => {
+        if (!p) return;
+        const key = String(p.id || p.name || "");
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        picks.push(p);
+      };
+
+      for (const p of list) {
+        if (picks.length >= n) break;
+        if (!p._isPack && p.score > 0 && hasSignalsLoose(p)) push(p);
+      }
+
+      for (const p of list) {
+        if (picks.length >= n) break;
+        if (!p._isPack && p.score > 0 && hasAnyInfo(p)) push(p);
+      }
+
+      for (const p of list) {
+        if (picks.length >= n) break;
+        if (!p._isPack && hasAnyInfo(p)) push(p);
+      }
+
+      return picks;
+    };
+
+    // ==========================================
+    // Diversidad terapéutica (antes de pickTopN)
+    // ==========================================
+    const THERAPEUTIC_TYPE = {
+      te: "metabolico",
+      capsula: "regulador",
+      extracto: "adaptogeno",
+      proteina: "nutricional",
+      batido: "nutricional",
+      cafe: "estimulante",
+    };
+
+    const getTherapeuticType = (p) => {
+      const c = String(p?.category || "").toLowerCase();
+      return THERAPEUTIC_TYPE[c] || "general";
+    };
+
+    const reorderByDiversity = (list) => {
+      const picks = [];
+      const used = new Set();
+
+      for (const p of list) {
+        if (p._isPack) continue;
+        const type = getTherapeuticType(p);
+        if (!used.has(type) || picks.length < 2) {
+          picks.push(p);
+          used.add(type);
+        }
+        if (picks.length >= 3) break;
+      }
+
+      if (picks.length === 0) return list;
+
+      const pickedIds = new Set(picks.map((x) => x.id));
+      return [...picks, ...list.filter((x) => !pickedIds.has(x.id))];
+    };
+
+    const sortedDiversified = reorderByDiversity(sorted);
+    const main = pickTopN(sortedDiversified, 3);
+
+    const rest = sorted
+      .filter((p) => !p._isPack)
+      .filter((p) => !main.some((m) => m.id === p.id))
+      .filter((p) => hasAnyInfo(p));
+
+    const secondary = rest.slice(0, 3);
+    const optional = rest.slice(3, 6);
+
+    setRecommendations({ main, secondary, optional });
+  }, [products, profile, imc, goalKey, metabolicRisk, metabolicProfile, goalTags]);
 
   // -----------------------------
   // Gráfica simulada
@@ -356,10 +768,10 @@ export default function SmartAssessorPro({
   }, [imc]);
 
   // -----------------------------
-  // Plan mensual (con ejemplo de comida)
+  // Plan mensual (con ejemplo)
   // -----------------------------
   useEffect(() => {
-    const goal = profile.goal || "bajar_grasa";
+    const goal = goalKey;
 
     const baseDiet =
       goal === "aumentar_musculo"
@@ -379,26 +791,17 @@ export default function SmartAssessorPro({
     const plan = [
       {
         semana: "Semana 1",
-        foco:
-          goal === "bajar_grasa"
-            ? "Detox, desinflamación y regular digestión."
-            : "Activar metabolismo y energía.",
+        foco: goal === "bajar_grasa" ? "Detox, desinflamación y regular digestión." : "Activar metabolismo y energía.",
         diet: baseDiet,
       },
       {
         semana: "Semana 2",
-        foco:
-          goal === "bajar_grasa"
-            ? "Control de antojos y balance de glucosa."
-            : "Aumentar aporte de proteína y recuperación.",
+        foco: goal === "bajar_grasa" ? "Control de antojos y balance de glucosa." : "Aumentar aporte de proteína y recuperación.",
         diet: baseDiet,
       },
       {
         semana: "Semana 3",
-        foco:
-          goal === "bajar_grasa"
-            ? "Reforzar resultados y reducir medidas."
-            : "Definir y mantener masa muscular.",
+        foco: goal === "bajar_grasa" ? "Reforzar resultados y reducir medidas." : "Definir y mantener masa muscular.",
         diet: baseDiet,
       },
       {
@@ -408,7 +811,7 @@ export default function SmartAssessorPro({
       },
     ];
     setMonthlyPlan(plan);
-  }, [profile.goal]);
+  }, [goalKey]);
 
   // -----------------------------
   // Exportar a PDF
@@ -428,169 +831,184 @@ export default function SmartAssessorPro({
   const waNumber = getSmartWhatsAppNumber();
 
   // ===================================================================
-  // RENDER
-  // ===================================================================
-  return (
-    <div className="mt-6 space-y-4">
-      {/* Área que se exporta a PDF */}
-      <div
-        ref={pdfRef}
-        className="bg-white rounded-xl shadow-sm border border-emerald-50 p-4 md:p-5 space-y-4"
-      >
-        {/* Encabezado + botón de salud */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-          <div>
-            <h2 className="text-lg md:text-xl font-bold text-emerald-700">
-              Análisis Personalizado – Asesora Diana Montoya Hernández
-            </h2>
-            <p className="text-xs text-gray-500">
-              Objetivo:{" "}
-              <span className="font-semibold text-gray-700">
-                {profile.goal === "bajar_grasa"
-                  ? "Bajar grasa"
-                  : profile.goal === "aumentar_musculo"
-                  ? "Aumentar músculo"
-                  : profile.goal === "energia"
-                  ? "Energía y rendimiento"
-                  : profile.goal === "digestion"
-                  ? "Digestión y desinflamación"
-                  : "Bienestar general"}
+// RENDER
+// ===================================================================
+return (
+  <div className="mt-6 space-y-4">
+    <div
+      ref={pdfRef}
+      className="bg-white rounded-xl shadow-sm border border-emerald-50 p-4 md:p-5 space-y-4"
+    >
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+        <div>
+          <h2 className="text-lg md:text-xl font-bold text-emerald-700">
+            Análisis Personalizado – Asesora Diana Montoya Hernández
+          </h2>
+          <p className="text-xs text-gray-500">
+            Objetivo:{" "}
+            <span className="font-semibold text-gray-700">
+              {displayGoalLabel(goalKey)}
+            </span>
+          </p>
+        </div>
+
+        <button
+          onClick={() => setShowHealth((v) => !v)}
+          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs md:text-sm rounded-full border border-emerald-600 text-emerald-700 bg-emerald-50 hover:bg-emerald-600 hover:text-white transition"
+        >
+          <span className="animate-bounce text-lg">👆</span>
+          Ver resumen de tu salud y HealthScore
+        </button>
+      </div>
+
+      {showHealth && (
+        <div className="grid md:grid-cols-2 gap-3">
+          <div className="bg-emerald-50 rounded-lg p-3 text-xs md:text-sm">
+            <div className="flex items-center justify-between">
+              <p className="font-semibold text-emerald-800">
+                Resumen de tu salud actual
+              </p>
+              <span className="px-2 py-0.5 rounded-full text-[11px] bg-emerald-100 text-emerald-700 border border-emerald-200">
+                IMC: {imc ?? "—"} {imcInfo.label && `· ${imcInfo.label}`}
               </span>
+            </div>
+
+            <p className="mt-2 text-gray-700">{imcInfo.text}</p>
+
+            <div className="mt-2 flex flex-wrap gap-2">
+              <span className="px-2 py-0.5 rounded-full text-[11px] bg-white text-emerald-800 border border-emerald-200">
+                Riesgo metabólico: <b>{metabolicRisk}</b>
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[11px] bg-white text-emerald-800 border border-emerald-200">
+                Perfil: <b>{metabolicProfile}</b>
+              </span>
+            </div>
+
+            {imcInfo.kilosExtra != null && imcInfo.kilosExtra > 0 && (
+              <p className="mt-1 text-gray-700">
+                Estimamos que estás aproximadamente{" "}
+                <span className="font-semibold">
+                  {imcInfo.kilosExtra.toFixed(1)} kg
+                </span>{" "}
+                por encima de tu rango saludable.
+              </p>
+            )}
+
+            {waterLiters && (
+              <p className="mt-1 text-emerald-800 font-medium">
+                Recomendación de agua:{" "}
+                <span className="font-bold">{waterLiters} L</span> al día
+                {waterGlasses && (
+                  <>
+                    {" "}
+                    (≈{" "}
+                    <span className="font-semibold">{waterGlasses} vasos</span>{" "}
+                    de 250 ml).
+                  </>
+                )}
+              </p>
+            )}
+
+            <p className="mt-1 text-[11px] text-gray-500">
+              Este análisis es orientativo y no reemplaza la opinión de un
+              profesional de salud.
             </p>
           </div>
 
-          <button
-            onClick={() => setShowHealth((v) => !v)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs md:text-sm rounded-full border border-emerald-600 text-emerald-700 bg-emerald-50 hover:bg-emerald-600 hover:text-white transition"
-          >
-            <span className="animate-bounce text-lg">👆</span>
-            Ver resumen de tu salud y HealthScore
-          </button>
-        </div>
-
-        {/* Resumen de salud colapsable */}
-        {showHealth && (
-          <div className="grid md:grid-cols-2 gap-3">
-            <div className="bg-emerald-50 rounded-lg p-3 text-xs md:text-sm">
-              <div className="flex items-center justify-between">
-                <p className="font-semibold text-emerald-800">
-                  Resumen de tu salud actual
-                </p>
-                <span className="px-2 py-0.5 rounded-full text-[11px] bg-emerald-100 text-emerald-700 border border-emerald-200">
-                  IMC: {imc ?? "—"} {imcInfo.label && `· ${imcInfo.label}`}
+          <div className="h-full rounded-2xl bg-white border border-emerald-100 shadow-sm overflow-hidden flex flex-col p-3">
+            <div>
+              <p className="font-semibold text-amber-800">
+                HealthScore estimado a 30 días
+              </p>
+              <p className="mt-2 text-3xl font-bold text-amber-700">
+                {healthScore}
+                <span className="text-base font-medium text-amber-600">
+                  /100
                 </span>
-              </div>
-
-              <p className="mt-2 text-gray-700">{imcInfo.text}</p>
-
-              {imcInfo.kilosExtra != null && imcInfo.kilosExtra > 0 && (
-                <p className="mt-1 text-gray-700">
-                  Estimamos que estás aproximadamente{" "}
-                  <span className="font-semibold">
-                    {imcInfo.kilosExtra.toFixed(1)} kg
-                  </span>{" "}
-                  por encima de tu rango saludable.
-                </p>
-              )}
-
-              {waterLiters && (
-                <p className="mt-1 text-emerald-800 font-medium">
-                  Recomendación de agua:{" "}
-                  <span className="font-bold">{waterLiters} L</span> al día
-                  {waterGlasses && (
-                    <>
-                      {" "}
-                      (≈{" "}
-                      <span className="font-semibold">
-                        {waterGlasses} vasos
-                      </span>{" "}
-                      de 250 ml).
-                    </>
-                  )}
-                </p>
-              )}
-
-              <p className="mt-1 text-[11px] text-gray-500">
-                Este análisis es orientativo y no reemplaza la opinión de un
-                profesional de salud.
+              </p>
+              <p className="mt-1 text-amber-800">
+                Basado en tu objetivo, tu IMC y el protocolo sugerido de
+                productos + hábitos.
               </p>
             </div>
 
-            <div className="bg-amber-50 rounded-lg p-3 text-xs md:text-sm flex flex-col justify-between">
-              <div>
-                <p className="font-semibold text-amber-800">
-                  HealthScore estimado a 30 días
-                </p>
-                <p className="mt-2 text-3xl font-bold text-amber-700">
-                  {healthScore}
-                  <span className="text-base font-medium text-amber-600">
-                    /100
-                  </span>
-                </p>
-                <p className="mt-1 text-amber-800">
-                  Basado en tu objetivo, tu IMC y el protocolo sugerido de
-                  productos + hábitos.
-                </p>
-              </div>
-              <div className="mt-2 h-20 md:h-24">
-                <ResponsiveContainer>
-                  <LineChart data={progressData}>
-                    <CartesianGrid stroke="#eee" />
-                    <XAxis dataKey="semana" />
-                    <YAxis />
-                    <Tooltip />
-                    <Line
-                      type="monotone"
-                      dataKey="imc"
-                      stroke="#0f766e"
-                      strokeWidth={2}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
+            <div className="mt-2 h-20 md:h-24">
+              <ResponsiveContainer>
+                <LineChart data={progressData}>
+                  <CartesianGrid stroke="#eee" />
+                  <XAxis dataKey="semana" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line
+                    type="monotone"
+                    dataKey="imc"
+                    stroke="#0f766e"
+                    strokeWidth={2}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Productos recomendados */}
+      <div className="space-y-2">
+        <h3 className="text-sm md:text-base font-semibold text-gray-800">
+          Productos recomendados para ti
+        </h3>
+
         <div className="space-y-2">
-          <h3 className="text-sm md:text-base font-semibold text-gray-800">
-            Productos recomendados para ti
-          </h3>
+          {recommendations.main.length > 0 && (
+            <>
+              <p className="text-[11px] font-semibold text-emerald-700">
+                IDEALES para tu objetivo e IMC
+              </p>
 
-          <div className="space-y-2">
-            {recommendations.main.length > 0 && (
-              <>
-                <p className="text-[11px] font-semibold text-emerald-700">
-                  IDEALES para tu objetivo e IMC
-                </p>
-                <div className="grid md:grid-cols-3 gap-2">
-                  {recommendations.main.map((p) => (
-                    <div
-                      key={p.id}
-                      className="relative border border-emerald-100 rounded-lg p-2 bg-white flex flex-col gap-0.5"
-                    >
-                      {p.id === "te_divina_original" && (
-                        <div className="absolute -top-2 right-2 bg-red-600 text-[10px] text-white px-2 py-0.5 rounded-full shadow">
-                          Paga 4 y llévate 6
-                        </div>
-                      )}
-                      <p className="font-semibold text-xs text-gray-800 line-clamp-2">
-                        {p.name}
-                      </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 auto-rows-fr">
+                {recommendations.main.map((p) => (
+                  <div
+                    key={p.id}
+                    className="relative h-full border border-emerald-100 rounded-lg p-2 bg-white flex flex-col"
+                  >
+                    {p.id === "te_divina_original" && (
+                      <div className="absolute -top-2 right-2 bg-red-600 text-[10px] text-white px-2 py-0.5 rounded-full shadow">
+                        Paga 4 y llévate 6
+                      </div>
+                    )}
+
+                    <p className="font-semibold text-xs text-gray-800 line-clamp-2 min-h-[2.25rem]">
+                      {p.name}
+                    </p>
+
+                    {/* Imagen recomendación */}
+                    <div className="w-full h-32 bg-white flex items-center justify-center p-2">
                       {p.img && (
                         <img
                           src={p.img}
                           alt={p.name}
-                          className="h-14 object-contain mx-auto"
+                          className="w-full h-full object-contain"
                         />
                       )}
-                      <p className="text-[10px] text-gray-600">
-                        {reasonForProduct(p, profile, imcInfo)}
-                      </p>
+                    </div>
+
+                    {/* Motivo */}
+                    <p className="mt-2 text-[11px] text-gray-600 line-clamp-3 min-h-[3.2rem]">
+                      {buildReasonPro(p, imcInfo, goalKey)}
+                    </p>
+
+                    {/* Botón abajo siempre */}
+                    <div className="mt-auto pt-2">
                       <button
-                        className="text-[11px] px-2 py-1 rounded-full bg-emerald-600 text-white hover:bg-emerald-700"
+                        type="button"
+                        className="w-full text-[11px] px-3 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
                         onClick={() => {
+                          // 1) Si App.jsx te pasó onOpenById, abre el producto en tu catálogo
+                          if (typeof onOpenById === "function" && p?.id) {
+                            onOpenById(p.id);
+                            return;
+                          }
+
+                          // 2) Fallback: WhatsApp (como estaba)
                           window.open(
                             `https://wa.me/52${waNumber}?text=Hola, quiero pedir ${encodeURIComponent(
                               p.name
@@ -602,111 +1020,106 @@ export default function SmartAssessorPro({
                         Quiero este producto
                       </button>
                     </div>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {recommendations.secondary.length > 0 && (
-              <>
-                <p className="text-[11px] font-semibold text-amber-700 mt-1.5">
-                  Complementos que pueden potenciar tus resultados
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {recommendations.secondary.map((p) => (
-                    <span
-                      key={p.id}
-                      className="px-2.5 py-1 text-[11px] rounded-full bg-amber-50 border border-amber-200 text-amber-800"
-                    >
-                      {p.name}
-                    </span>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Plan nutricional como regalo */}
-        <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs md:text-sm">
-          <p className="font-semibold text-amber-800 flex items-center gap-2">
-            🎁 Regalo exclusivo: Plan Nutricional 30 Días
-          </p>
-          <p className="mt-1 text-amber-800">
-            Al armar tu pedido conmigo, te regalo un plan mensual de alimentación
-            personalizado para acompañar los productos Vida Divina.
-          </p>
-          <button
-            onClick={() => setShowPlanPreview((v) => !v)}
-            className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-600 text-white text-xs hover:bg-amber-700"
-          >
-            {showPlanPreview
-              ? "Ocultar vista previa"
-              : "Ver ejemplo rápido de mi plan mensual"}
-          </button>
-
-          {showPlanPreview && monthlyPlan.length > 0 && (
-            <div className="mt-2 space-y-1 text-[11px] md:text-xs">
-              {monthlyPlan.map((w) => (
-                <div key={w.semana} className="mb-1.5">
-                  <p className="font-semibold">
-                    {w.semana}: <span className="font-normal">{w.foco}</span>
-                  </p>
-                </div>
-              ))}
-              {/* Ejemplo compacto de alimentación diaria */}
-              <div className="mt-1 border-t border-amber-200 pt-1">
-                <p className="font-semibold text-amber-800">
-                  Ejemplo de alimentación diaria:
-                </p>
-                <p>
-                  <b>Desayuno:</b> {monthlyPlan[0].diet.breakfast}
-                </p>
-                <p>
-                  <b>Comida:</b> {monthlyPlan[0].diet.lunch}
-                </p>
-                <p>
-                  <b>Cena:</b> {monthlyPlan[0].diet.dinner}
-                </p>
-                <p>
-                  <b>Snacks:</b> {monthlyPlan[0].diet.snacks}
-                </p>
-                <p className="mt-1 text-[10px] text-amber-700">
-                  El plan completo te lo envío después de confirmar tu compra,
-                  ajustado a tus horarios, gustos y productos elegidos. 💚
-                </p>
+                  </div>
+                ))}
               </div>
-            </div>
+            </>
+          )}
+
+          {recommendations.secondary.length > 0 && (
+            <>
+              <p className="text-[11px] font-semibold text-amber-700 mt-1.5">
+                Complementos que pueden potenciar tus resultados
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {recommendations.secondary.map((p) => (
+                  <span
+                    key={p.id}
+                    className="px-2.5 py-1 text-[11px] rounded-full bg-amber-50 border border-amber-200 text-amber-800"
+                  >
+                    {p.name}
+                  </span>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>
 
-      {/* Botones fuera del área PDF */}
-      <div className="grid md:grid-cols-2 gap-3">
+      <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs md:text-sm">
+        <p className="font-semibold text-amber-800 flex items-center gap-2">
+          🎁 Regalo exclusivo: Plan Nutricional 30 Días
+        </p>
+        <p className="mt-1 text-amber-800">
+          Al armar tu pedido conmigo, te regalo un plan mensual de alimentación
+          personalizado para acompañar los productos Vida Divina.
+        </p>
+
         <button
-          onClick={handleExportPDF}
-          className="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800"
+          onClick={() => setShowPlanPreview((v) => !v)}
+          className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-600 text-white text-xs hover:bg-amber-700"
         >
-          Descargar mi análisis en PDF
+          {showPlanPreview
+            ? "Ocultar vista previa"
+            : "Ver ejemplo rápido de mi plan mensual"}
         </button>
-        <button
-          onClick={() => {
-            window.open(
-              `https://wa.me/52${waNumber}?text=Hola, vengo de mi análisis personalizado y quiero armar mi paquete.`,
-              "_blank"
-            );
-          }}
-          className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700"
-        >
-          Hablar con Diana por WhatsApp
-        </button>
+
+        {showPlanPreview && monthlyPlan.length > 0 && (
+          <div className="mt-2 space-y-1 text-[11px] md:text-xs">
+            {monthlyPlan.map((w) => (
+              <div key={w.semana} className="mb-1.5">
+                <p className="font-semibold">
+                  {w.semana}:{" "}
+                  <span className="font-normal">{w.foco}</span>
+                </p>
+              </div>
+            ))}
+
+            <div className="mt-1 border-t border-amber-200 pt-1">
+              <p className="font-semibold text-amber-800">
+                Ejemplo de alimentación diaria:
+              </p>
+              <p>
+                <b>Desayuno:</b> {monthlyPlan[0].diet.breakfast}
+              </p>
+              <p>
+                <b>Comida:</b> {monthlyPlan[0].diet.lunch}
+              </p>
+              <p>
+                <b>Cena:</b> {monthlyPlan[0].diet.dinner}
+              </p>
+              <p>
+                <b>Snacks:</b> {monthlyPlan[0].diet.snacks}
+              </p>
+              <p className="mt-1 text-[10px] text-amber-700">
+                El plan completo te lo envío después de confirmar tu compra,
+                ajustado a tus horarios, gustos y productos elegidos. 💚
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
-  );
+
+    <div className="grid md:grid-cols-2 gap-3">
+      <button
+        onClick={handleExportPDF}
+        className="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800"
+      >
+        Descargar mi análisis en PDF
+      </button>
+      <button
+        onClick={() => {
+          window.open(
+            `https://wa.me/52${waNumber}?text=Hola, vengo de mi análisis personalizado y quiero armar mi paquete.`,
+            "_blank"
+          );
+        }}
+        className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700"
+      >
+        Hablar con Diana por WhatsApp
+      </button>
+    </div>
+  </div>
+);
 }
-
-
-
-
-
-
