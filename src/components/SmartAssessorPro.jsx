@@ -763,8 +763,7 @@ const phone =
   profile?.phone ||
   profile?.telefono ||
   profile?.from_phone ||
-  localStorage.getItem("vd_last_assigned") ||
-  localStorage.getItem("vd_assigned_whatsapp");
+  localStorage.getItem("vd_last_whatsapp");
 
   console.log("SMART DATA", { tenant_id, phone });
 
