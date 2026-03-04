@@ -753,6 +753,25 @@ scored.forEach((p) => {
     setRecommendations({ main, secondary, optional });
   }, [products, profile, imc, goalKey, metabolicRisk, metabolicProfile, goalTags]);
 
+// ✅ Guardar recomendación principal en CRM (solo si hay TOP)
+try {
+  if (main?.length) {
+    const recommendedIds = main.map(p => p.id);
+
+    fetch("/api/public/lead-state", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tenant_id: profile?.tenant_id,
+        phone: profile?.phone || profile?.telefono || profile?.from_phone,
+        recommended_products: recommendedIds,
+        context: { flow: "smart_assessor", goalKey, imc }
+      }),
+    });
+  }
+} catch (e) {
+  console.warn("lead-state save skipped", e);
+}
   // -----------------------------
   // Gráfica simulada
   // -----------------------------
