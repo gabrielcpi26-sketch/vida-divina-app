@@ -750,28 +750,50 @@ scored.forEach((p) => {
     const secondary = rest.slice(0, 3);
     const optional = rest.slice(3, 6);
 
-    setRecommendations({ main, secondary, optional });
-  }, [products, profile, imc, goalKey, metabolicRisk, metabolicProfile, goalTags]);
+setRecommendations({ main, secondary, optional });
 
-// ✅ Guardar recomendación principal en CRM (solo si hay TOP)
-try {
-  if (main?.length) {
-    const recommendedIds = main.map(p => p.id);
+// guardar recomendación principal en CRM
+if (main?.length) {
 
-    fetch("/api/public/lead-state", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        tenant_id: profile?.tenant_id,
-        phone: profile?.phone || profile?.telefono || profile?.from_phone,
-        recommended_products: recommendedIds,
-        context: { flow: "smart_assessor", goalKey, imc }
-      }),
-    });
+  const recommendedIds = main.map(p => p.id);
+
+  const tenant_id = "4c7f5e26-de17-4933-83df-84d938cd2073";
+const phone =
+  window.LEAD_PHONE ||
+  profile?.phone ||
+  profile?.telefono ||
+  profile?.from_phone ||
+  localStorage.getItem("vd_last_assigned") ||
+  localStorage.getItem("vd_assigned_whatsapp");
+
+  console.log("SMART DATA", { tenant_id, phone });
+
+  if (tenant_id && phone) {
+    try {
+      fetch("https://crm-backend-zkto.onrender.com/api/public/lead-state", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          tenant_id,
+          phone,
+          recommended_products: recommendedIds,
+          context: {
+            flow: "smart_assessor",
+            goalKey,
+            imc
+          }
+        })
+      });
+    } catch (e) {
+      console.warn("lead-state save skipped", e);
+    }
   }
-} catch (e) {
-  console.warn("lead-state save skipped", e);
 }
+
+}, [products, profile, imc, goalKey, metabolicRisk, metabolicProfile, goalTags]);
+
   // -----------------------------
   // Gráfica simulada
   // -----------------------------
