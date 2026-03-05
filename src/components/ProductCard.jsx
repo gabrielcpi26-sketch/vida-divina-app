@@ -160,7 +160,7 @@ async function handlePayNow() {
       .replace(/[^\d]/g, "")
       .slice(0, 20) || "direct_web";
 
-    const API_BASE = (import.meta?.env?.VITE_API_URL || "http://localhost:3002").replace(/\/$/, "");
+    const API_BASE = (import.meta?.env?.VITE_API_URL || "https://crm-backend-zkto.onrender.com").replace(/\/$/, "");
 
     const res = await fetch(`${API_BASE}/api/stripe/create-checkout-session`, {
       method: "POST",
