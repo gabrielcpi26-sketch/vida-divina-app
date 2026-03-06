@@ -319,20 +319,30 @@ function updatePromo(value) {
                 )}
               </div>
 
-              {packageUnits && (
-                <div className="text-[11px] text-gray-500 mt-1">
-                  Paquete de {packageUnits} piezas
-                </div>
-              )}
+             {packageUnits && (
+  <div className="text-[11px] text-gray-500 mt-1">
+    Paquete de {packageUnits} piezas
+  </div>
+)}
 
-              {unitPrice > 0 && (
-                <div className="text-[11px] text-gray-400">
-                  Pieza individual: ${unitPrice}
-                </div>
-              )}
-            </>
-          )}
-        </div>
+{unitPrice > 0 && (
+  <div className="text-[11px] text-gray-400">
+    Pieza individual: ${unitPrice}
+  </div>
+)}
+
+{/* Envío estimado */}
+<div className="text-[11px] text-gray-600 font-semibold mt-1">
+  + Envío desde $50 MXN
+</div>
+
+<div className="text-[10px] text-gray-800">
+  El envío exacto se calcula en el pago según tu dirección.
+</div>
+
+</>
+)}
+</div>
 
 {(() => {
   // 1) Prioridad absoluta: custom_blurb (vd_products_pro) o override (si lo manejas en content)
