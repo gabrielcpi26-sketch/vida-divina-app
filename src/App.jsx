@@ -11,7 +11,7 @@ import PaymentMethods from "./components/PaymentMethods";
 import ProductAttachments from "./components/ProductAttachments";
 import SmartAssessorPro from "./components/SmartAssessorPro";
 import OfferTimer from "./components/OfferTimer";
-import DownloadAnalysisPdfButton from "./components/DownloadAnalysisPdfButton.jsx";
+
 import CatalogoAdmin from "./components/CatalogoAdmin";
 
 // ✅ Supabase
@@ -450,8 +450,7 @@ return (
         profile={profile}
       />
 
-      {/* PDF */}
-      <DownloadAnalysisPdfButton />
+   
 
       {/* Galería */}
       <ProductGallery

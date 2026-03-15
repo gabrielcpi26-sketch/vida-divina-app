@@ -339,8 +339,58 @@ export default function SmartAssessorPro({
   const [metabolicProfile, setMetabolicProfile] = useState("—");
 
   const pdfRef = useRef(null);
+const leadStateSent = useRef(false);
 
   const profile = profileProp || {};
+// Evita loops por cambios de referencia en el objeto profile
+const profileStable = useMemo(
+  () => ({
+    age: profile.age ?? profile.edad ?? 0,
+    sex: profile.sex ?? profile.sexo ?? "",
+    goal: profile.goal ?? profile.objetivo ?? "",
+    phone:
+      profile.phone ??
+      profile.telefono ??
+      profile.from_phone ??
+      localStorage.getItem("vd_last_whatsapp") ??
+      null,
+    weight:
+      profile.weight ??
+      profile.peso ??
+      profile.pesoKg ??
+      profile.kg ??
+      profile.peso_kg ??
+      0,
+    height:
+      profile.height ??
+      profile.estatura ??
+      profile.altura ??
+      profile.altura_cm ??
+      0,
+    needs: profile.needs || {}
+  }),
+  [
+    profile.age,
+    profile.edad,
+    profile.sex,
+    profile.sexo,
+    profile.goal,
+    profile.objetivo,
+    profile.phone,
+    profile.telefono,
+    profile.from_phone,
+    profile.weight,
+    profile.peso,
+    profile.pesoKg,
+    profile.kg,
+    profile.peso_kg,
+    profile.height,
+    profile.estatura,
+    profile.altura,
+    profile.altura_cm,
+    profile.needs
+  ]
+);
   const products = useMemo(() => productsProp || mergedProducts || [], [productsProp, mergedProducts]);
 
   const imc = useMemo(() => calcIMC(profile), [profile]);
@@ -355,29 +405,30 @@ export default function SmartAssessorPro({
   // -----------------------------
   // HealthScore (computeHealthScore)
   // -----------------------------
-  useEffect(() => {
-    if (imc == null) {
-      setHealthScore(0);
-      setMetabolicRisk("—");
-      setMetabolicProfile("—");
-      return;
-    }
+useEffect(() => {
+  if (imc == null) {
+    setHealthScore(0);
+    setMetabolicRisk("—");
+    setMetabolicProfile("—");
+    return;
+  }
 
-    const age = profile.age ?? profile.edad ?? 0;
-    const sex = profile.sex ?? profile.sexo ?? "";
-    const objective = profile.objetivo ?? profile.goal ?? "";
+const age = profileStable.age;
+const sex = profileStable.sex;
+const objective = profileStable.goal;
 
-    const { healthScore, metabolicRisk, metabolicProfile } = computeHealthScore({
-      bmi: imc,
-      age,
-      sex,
-      objective,
-    });
+  const { healthScore, metabolicRisk, metabolicProfile } = computeHealthScore({
+    bmi: imc,
+    age,
+    sex,
+    objective,
+  });
 
-    setHealthScore(healthScore);
-    setMetabolicRisk(metabolicRisk);
-    setMetabolicProfile(metabolicProfile);
-  }, [profile, imc]);
+  setHealthScore(healthScore);
+  setMetabolicRisk(metabolicRisk);
+  setMetabolicProfile(metabolicProfile);
+
+}, [imc, profileStable]);
 
   // -----------------------------
   // Recomendaciones de productos (DEFINITIVO PRO)
@@ -752,18 +803,16 @@ scored.forEach((p) => {
 
 setRecommendations({ main, secondary, optional });
 
-// guardar recomendación principal en CRM
-if (main?.length) {
+// guardar recomendación principal en CRM SOLO UNA VEZ
+if (main?.length && !leadStateSent.current) {
+
+  leadStateSent.current = true;
 
   const recommendedIds = main.map(p => p.id);
 
   const tenant_id = "4c7f5e26-de17-4933-83df-84d938cd2073";
-const phone =
-  window.LEAD_PHONE ||
-  profile?.phone ||
-  profile?.telefono ||
-  profile?.from_phone ||
-  localStorage.getItem("vd_last_whatsapp");
+
+const phone = window.LEAD_PHONE || profileStable.phone;
 
   console.log("SMART DATA", { tenant_id, phone });
 
@@ -791,7 +840,7 @@ const phone =
   }
 }
 
-}, [products, profile, imc, goalKey, metabolicRisk, metabolicProfile, goalTags]);
+}, [products, profileStable, imc, goalKey, metabolicRisk, metabolicProfile, goalTags]);
 
   // -----------------------------
   // Gráfica simulada
@@ -1086,80 +1135,129 @@ return (
         </div>
       </div>
 
-      <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs md:text-sm">
-        <p className="font-semibold text-amber-800 flex items-center gap-2">
-          🎁 Regalo exclusivo: Plan Nutricional 30 Días
+<div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-4 text-xs md:text-sm">
+
+  <p className="font-semibold text-amber-800 flex items-center gap-2">
+    🎁 Regalo exclusivo: Plan Nutricional Personalizado (30 días)
+  </p>
+
+  <p className="mt-2 text-amber-800 leading-relaxed">
+    Basado en tu diagnóstico, preparé un protocolo de alimentación diseñado para ayudarte a 
+    <b> bajar grasa, desinflamar y mejorar tu metabolismo</b>.
+  </p>
+
+  <p className="mt-2 text-amber-800">
+    Tu plan incluye:
+  </p>
+
+  <ul className="mt-1 list-disc list-inside text-amber-800 space-y-1">
+    <li>Qué comer para bajar grasa</li>
+    <li>Qué evitar para reducir inflamación</li>
+    <li>Cómo usar tus productos recomendados</li>
+    <li>Ejemplo de menú semanal</li>
+  </ul>
+
+  <p className="mt-2 text-[11px] text-amber-700">
+    Solo mostramos un adelanto. Tu plan completo se envía automáticamente cuando lo desbloqueas.
+  </p>
+
+<button
+  onClick={async () => {
+    const tenant_id = "4c7f5e26-de17-4933-83df-84d938cd2073";
+
+    const phone = window.LEAD_PHONE || profileStable.phone;
+
+    if (!phone) {
+      alert("Primero necesitamos tu WhatsApp para enviarte el plan.");
+      return;
+    }
+
+    try {
+      await fetch(
+        "https://crm-backend-zkto.onrender.com/api/public/lead-state",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            tenant_id,
+            phone,
+            recommended_products: recommendations.main.map(p => p.id),
+            context: {
+              flow: "smart_assessor",
+              goalKey,
+              imc,
+              healthScore,
+              unlock_plan: true
+            }
+          })
+        }
+      );
+
+      alert("🎁 Tu plan nutricional se está enviando a tu WhatsApp.");
+
+    } catch (e) {
+      console.warn("unlock plan error", e);
+    }
+  }}
+  className="relative mt-4 w-full py-4 rounded-xl text-white text-base md:text-lg font-bold 
+  bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-500
+  shadow-xl hover:scale-[1.03] hover:shadow-2xl transition-all duration-200"
+>
+
+  <span className="absolute -top-2 -left-2 animate-bounce text-xl">
+    🎁
+  </span>
+
+  Recibir mi Plan Nutricional Personalizado GRATIS
+
+  <span className="absolute -right-2 top-1 animate-pulse text-xl">
+    ✨
+  </span>
+
+</button>
+
+<button
+  onClick={() => setShowPlanPreview((v) => !v)}
+  className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-600 text-white text-xs hover:bg-amber-700"
+>
+  {showPlanPreview
+    ? "Ocultar vista previa"
+    : "Ver ejemplo rápido de mi plan"}
+</button>
+
+{showPlanPreview && monthlyPlan.length > 0 && (
+  <div className="mt-3 space-y-1 text-[11px] md:text-xs">
+
+    {monthlyPlan.map((w) => (
+      <div key={w.semana} className="mb-1.5">
+        <p className="font-semibold">
+          {w.semana}: <span className="font-normal">{w.foco}</span>
         </p>
-        <p className="mt-1 text-amber-800">
-          Al armar tu pedido conmigo, te regalo un plan mensual de alimentación
-          personalizado para acompañar los productos Vida Divina.
-        </p>
-
-        <button
-          onClick={() => setShowPlanPreview((v) => !v)}
-          className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-600 text-white text-xs hover:bg-amber-700"
-        >
-          {showPlanPreview
-            ? "Ocultar vista previa"
-            : "Ver ejemplo rápido de mi plan mensual"}
-        </button>
-
-        {showPlanPreview && monthlyPlan.length > 0 && (
-          <div className="mt-2 space-y-1 text-[11px] md:text-xs">
-            {monthlyPlan.map((w) => (
-              <div key={w.semana} className="mb-1.5">
-                <p className="font-semibold">
-                  {w.semana}:{" "}
-                  <span className="font-normal">{w.foco}</span>
-                </p>
-              </div>
-            ))}
-
-            <div className="mt-1 border-t border-amber-200 pt-1">
-              <p className="font-semibold text-amber-800">
-                Ejemplo de alimentación diaria:
-              </p>
-              <p>
-                <b>Desayuno:</b> {monthlyPlan[0].diet.breakfast}
-              </p>
-              <p>
-                <b>Comida:</b> {monthlyPlan[0].diet.lunch}
-              </p>
-              <p>
-                <b>Cena:</b> {monthlyPlan[0].diet.dinner}
-              </p>
-              <p>
-                <b>Snacks:</b> {monthlyPlan[0].diet.snacks}
-              </p>
-              <p className="mt-1 text-[10px] text-amber-700">
-                El plan completo te lo envío después de confirmar tu compra,
-                ajustado a tus horarios, gustos y productos elegidos. 💚
-              </p>
-            </div>
-          </div>
-        )}
       </div>
-    </div>
+    ))}
 
-    <div className="grid md:grid-cols-2 gap-3">
-      <button
-        onClick={handleExportPDF}
-        className="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800"
-      >
-        Descargar mi análisis en PDF
-      </button>
-      <button
-        onClick={() => {
-          window.open(
-            `https://wa.me/52${waNumber}?text=Hola, vengo de mi análisis personalizado y quiero armar mi paquete.`,
-            "_blank"
-          );
-        }}
-        className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700"
-      >
-        Hablar con Diana por WhatsApp
-      </button>
+    <div className="mt-2 border-t border-amber-200 pt-2">
+      <p className="font-semibold text-amber-800">
+        Ejemplo de alimentación diaria
+      </p>
+
+      <p><b>Desayuno:</b> {monthlyPlan[0].diet.breakfast}</p>
+      <p><b>Comida:</b> {monthlyPlan[0].diet.lunch}</p>
+      <p><b>Cena:</b> {monthlyPlan[0].diet.dinner}</p>
+      <p><b>Snacks:</b> {monthlyPlan[0].diet.snacks}</p>
+
+<p className="mt-2 text-[10px] text-amber-700">
+  El plan completo se envía por WhatsApp junto con recomendaciones para usar tus productos. 💚
+</p>
     </div>
   </div>
+)}
+
+</div>
+</div>
+</div>
+
 );
 }
