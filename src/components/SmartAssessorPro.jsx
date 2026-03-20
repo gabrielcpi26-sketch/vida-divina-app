@@ -918,6 +918,49 @@ const phone = window.LEAD_PHONE || profileStable.phone;
   };
 
   const waNumber = getSmartWhatsAppNumber();
+// ===============================
+// 🔥 CHECKOUT STRIPE (SMART)
+// ===============================
+const handleBuy = async (product) => {
+  try {
+    const tenant_id = "4c7f5e26-de17-4933-83df-84d938cd2073";
+
+    const phone = window.LEAD_PHONE || profileStable.phone;
+
+    if (!phone) {
+      alert("Necesitamos tu WhatsApp antes de continuar.");
+      return;
+    }
+
+    const res = await fetch(
+      "https://crm-backend-zkto.onrender.com/api/stripe/create-checkout-session",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tenantId: tenant_id,
+          fromPhone: phone,
+          productName: product.name,
+          amount: product.price || product.precio || 0,
+        }),
+      }
+    );
+
+    const data = await res.json();
+
+    if (data?.url) {
+      window.location.href = data.url;
+    } else {
+      console.error("No checkout url", data);
+      alert("Error generando pago.");
+    }
+  } catch (e) {
+    console.error("Error checkout:", e);
+    alert("Error al iniciar pago.");
+  }
+};
 
   // ===================================================================
 // RENDER
@@ -1090,7 +1133,9 @@ return (
                       <button
                         type="button"
                         className="w-full text-[11px] px-3 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
-                        onClick={() => {
+                       onClick={() => {
+  handleBuy(p);
+}}
                           // 1) Si App.jsx te pasó onOpenById, abre el producto en tu catálogo
                           if (typeof onOpenById === "function" && p?.id) {
                             onOpenById(p.id);
