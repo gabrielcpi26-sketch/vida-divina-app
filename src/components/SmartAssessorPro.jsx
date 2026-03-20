@@ -1302,44 +1302,51 @@ return (
 
 <button
   onClick={async () => {
-    const tenant_id = "4c7f5e26-de17-4933-83df-84d938cd2073";
+  const tenant_id = "4c7f5e26-de17-4933-83df-84d938cd2073";
 
-    const phone = window.LEAD_PHONE || profileStable.phone;
+  const phone = window.LEAD_PHONE || profileStable.phone;
 
-    if (!phone) {
-      alert("Primero necesitamos tu WhatsApp para enviarte el plan.");
-      return;
-    }
+  if (!phone) {
+    alert("Primero necesitamos tu WhatsApp para enviarte el plan.");
+    return;
+  }
 
-    try {
-      await fetch(
-        "https://crm-backend-zkto.onrender.com/api/public/lead-state",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            tenant_id,
-            phone,
-            recommended_products: recommendations.main.map(p => p.id),
-            context: {
-              flow: "smart_assessor",
-              goalKey,
-              imc,
-              healthScore,
-              unlock_plan: true
-            }
-          })
-        }
-      );
+  try {
+    await fetch(
+      "https://crm-backend-zkto.onrender.com/api/public/lead-state",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tenant_id,
+          phone,
+          recommended_products: recommendations.main.map(p => p.id),
+          context: {
+            flow: "smart_assessor",
+            goalKey,
+            imc,
+            healthScore,
+            unlock_plan: true
+          }
+        })
+      }
+    );
 
-      alert("🎁 Tu plan nutricional se está enviando a tu WhatsApp.");
+    // 🔥 NUEVO (NO BORRA NADA)
+    const waPhone = "5217292549658";
 
-    } catch (e) {
-      console.warn("unlock plan error", e);
-    }
-  }}
+const message = encodeURIComponent("Listo, ya hice mi análisis. ¿Qué hago ahora?");
+
+    const url = `https://wa.me/${waPhone}?text=${message}`;
+
+    window.open(url, "_blank");
+
+  } catch (e) {
+    console.warn("unlock plan error", e);
+  }
+}}
   className="relative mt-4 w-full py-4 rounded-xl text-white text-base md:text-lg font-bold 
   bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-500
   shadow-xl hover:scale-[1.03] hover:shadow-2xl transition-all duration-200"
@@ -1349,7 +1356,11 @@ return (
     🎁
   </span>
 
-  Recibir mi Plan Nutricional Personalizado GRATIS
+  Recibir mi plan personalizado ahora
+
+<p className="text-xs text-amber-700 mt-2 text-center">
+  Basado en tu cuerpo, listo en segundos por WhatsApp
+</p>
 
   <span className="absolute -right-2 top-1 animate-pulse text-xl">
     ✨
