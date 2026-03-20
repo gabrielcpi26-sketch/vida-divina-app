@@ -197,12 +197,12 @@ const portada = localStorage.getItem("vd_portada_url")
       </span>
     </div>
 
-    {/* TÍTULO PRINCIPAL */}
-    <h1 className="mt-4 text-2xl md:text-3xl font-extrabold text-emerald-700 leading-snug">
-      ¿Problemas de inflamación,
-      <br />
-      o peso estancado?
-    </h1>
+   {/* TÍTULO PRINCIPAL */}
+<h1 className="mt-4 text-2xl md:text-3xl font-extrabold text-emerald-700 leading-snug">
+  ¿Te sientes inflamada, con antojos
+  <br />
+  y no logras bajar grasa aunque lo intentas?
+</h1>
 
   {/* TARJETA CON TU IMAGEN VERDE */} 
 <div className="mt-4 bg-white/95 border border-emerald-100 rounded-2xl shadow-md overflow-hidden">
@@ -226,60 +226,87 @@ const portada = localStorage.getItem("vd_portada_url")
 </div>
 
 
-    {/* TEXTO DE EMPATÍA / PROMESA */}
- <p className="text-[15px] text-center font-semibold text-emerald-700 leading-snug px-2 mb-2">
-  🚨 ¡Descubre qué pasa con tu cuerpo y <span className="text-pink-600 font-bold">toma el control YA</span>! 🚨
+  {/* TEXTO DE EMPATÍA / PROMESA */}
+<p className="text-[15px] text-center font-semibold text-emerald-700 leading-snug px-2 mb-2">
+  En menos de 1 minuto descubre qué está frenando tu cuerpo y 
+  <span className="text-pink-600 font-bold"> recibe un plan específico para desinflamarte y empezar a bajar grasa desde esta semana</span>.
 </p>
 
-    {/* ESCALERA DE VALOR */}
-   <div className="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-2 text-[13px] leading-tight">
+  {/* ESCALERA DE VALOR */}
+<div className="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-2 text-[13px] leading-tight">
   <p className="font-semibold text-emerald-700 mb-1">
-    En menos de 1 minuto vas a:
+    En menos de 1 minuto vas a descubrir:
   </p>
   <ul className="list-disc list-inside space-y-1">
-    <li>Ver tu IMC explicado de forma sencilla.</li>
-    <li>Definir tu objetivo prioritario (grasa, hormonas, digestión, energía...).</li>
-    <li>Recibir un combo sugerido de productos Vida Divina pensado especialmente para ti.</li>
+    <li>Qué está frenando tu cuerpo para bajar grasa o desinflamarse.</li>
+    <li>Tu tipo de metabolismo y por qué no ves resultados.</li>
+    <li>El plan exacto + productos específicos para empezar a cambiar desde esta semana.</li>
   </ul>
 </div>
 
-
-    {/* TEXTO ACTUALIZADO + MANITA ANIMADA SOBRE EL BOTÓN */}
+{/* TEXTO ACTUALIZADO + MANITA */}
 <p className="text-[13px] text-center mt-2 leading-tight">
   <span className="font-semibold text-emerald-700">
     Empieza aquí ⬇️
-  </span> responde un par de pasos y al final te enviaremos tus resultados y productos recomendados.
-</p>    
+  </span>{" "}
+  responde 2 pasos rápidos y recibe tu diagnóstico + plan personalizado directamente en tu WhatsApp.
+</p>
 
-    {/* MANITA INTERACTIVA ARRIBA DEL BOTÓN */}
-    <div className="mt-1 text-2xl animate-bounce">
-      👇
-    </div>
+{/* MANITA */}
+<div className="mt-1 text-2xl animate-bounce">
+  👇
+</div>
 
-    {/* BOTÓN VERDE “FLOTANTE” MÁS LLAMATIVO */}
-    <div className="mt-3 flex flex-col items-center gap-2">
-      <button
-        onClick={() => setStep(1)}
-        className="w-full py-3 bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-600
-                   text-white rounded-xl font-bold text-base shadow-lg
-                   hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]
-                   transition-transform transition-shadow duration-200
-                   animate-pulse"
-      >
-        Empezar mi análisis (gratis)
-      </button>
+{/* ⚠️ URGENCIA */}
+<p className="text-[12px] text-center text-red-600 font-semibold mt-2">
+  ⚠️ Últimos lugares disponibles hoy para recibir tu plan personalizado
+</p>
 
-      <p className="text-xs text-gray-600">
-        Toca el botón verde, es rápido y sin compromiso
-      </p>
-    </div>
 
-    {/* DISCLAIMER */}
-    <p className="mt-4 text-[11px] text-gray-400">
-      No es un diagnóstico médico, pero sí una guía clara basada en tu cuerpo y tus objetivos.
-    </p>
+
+{/* BOTÓN PRO */}
+<div className="mt-3 flex flex-col items-center gap-2">
+  <button
+    onClick={() => setStep(1)}
+    className="w-full py-3 bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-600
+               text-white rounded-xl font-bold text-base shadow-lg
+               hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]
+               transition-transform transition-shadow duration-200
+               animate-pulse"
+  >
+  Quiero saber qué está frenando mi cuerpo ahora
+  </button>
+
+<p className="text-[13px] text-center text-gray-700 font-semibold">
+  🔒 Valor real de asesoría: <span className="line-through">$499 MXN</span> 
+  <span className="text-emerald-600 font-bold"> HOY GRATIS</span>
+</p>
+
+  <p className="text-xs text-gray-600">
+    “Solo para personas listas para empezar hoy su cambio real”
+  </p>
+</div>
+
+{/* DISCLAIMER */}
+<p className="mt-4 text-[11px] text-gray-400">
+  No es un diagnóstico médico, pero sí una guía clara basada en tu cuerpo, tus hábitos y tu objetivo.
+</p>
   </div>
 )}
+
+
+<div className="mt-2 bg-white border border-emerald-100 rounded-xl p-2 text-[12px] shadow-sm">
+  
+  <p className="text-emerald-700 font-semibold text-center mb-1">
+    🔥 Más de 3,200 mujeres ya empezaron a bajar de peso con este método
+  </p>
+
+  <div className="space-y-1 text-gray-700 text-[11px]">
+    <p>“Bajé 3 kg en 3 semanas y me desinflamé muchísimo” – Ana, 34</p>
+    <p>“Se me quitó la inflamación en días, no lo podía creer” – Laura, 41</p>
+  </div>
+
+</div>
 
 
           {/* PASO 1: OBJETIVO */}
