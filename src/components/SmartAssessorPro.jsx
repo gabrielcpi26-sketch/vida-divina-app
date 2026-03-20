@@ -1124,36 +1124,75 @@ return (
                     </div>
 
                     {/* Motivo */}
-                    <p className="mt-2 text-[11px] text-gray-600 line-clamp-3 min-h-[3.2rem]">
-                      {buildReasonPro(p, imcInfo, goalKey)}
-                    </p>
+<p className="mt-2 text-[11px] text-gray-600 line-clamp-3 min-h-[3.2rem]">
+  {buildReasonPro(p, imcInfo, goalKey)}
+</p>
 
-                    {/* Botón abajo siempre */}
-                    <div className="mt-auto pt-2">
-                      <button
-                        type="button"
-                        className="w-full text-[11px] px-3 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
-                       onClick={() => {
-  handleBuy(p);
-}}
-                          // 1) Si App.jsx te pasó onOpenById, abre el producto en tu catálogo
-                          if (typeof onOpenById === "function" && p?.id) {
-                            onOpenById(p.id);
-                            return;
-                          }
+{/* Botón abajo siempre */}
+<div className="mt-auto pt-2">
+  <button
+    type="button"
+    className="w-full text-[11px] px-3 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
+    onClick={async () => {
+      try {
+        const tenant_id = "4c7f5e26-de17-4933-83df-84d938cd2073";
+        const phone = window.LEAD_PHONE || profileStable.phone;
 
-                          // 2) Fallback: WhatsApp (como estaba)
-                          window.open(
-                            `https://wa.me/52${waNumber}?text=Hola, quiero pedir ${encodeURIComponent(
-                              p.name
-                            )} del análisis personalizado.`,
-                            "_blank"
-                          );
-                        }}
-                      >
-                        Quiero este producto
-                      </button>
-                    </div>
+        // 👉 1. Intentar Stripe primero
+        if (phone) {
+          const res = await fetch(
+            "https://crm-backend-zkto.onrender.com/api/stripe/create-checkout-session",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                tenantId: tenant_id,
+                fromPhone: phone,
+                productName: p.name,
+                amount: p.price || p.precio || 0,
+              }),
+            }
+          );
+
+          const data = await res.json();
+
+          if (data?.url) {
+            window.location.href = data.url;
+            return; // 🔥 IMPORTANTE: corta aquí
+          }
+        }
+
+        // 👉 2. Si falla Stripe → abrir catálogo
+        if (typeof onOpenById === "function" && p?.id) {
+          onOpenById(p.id);
+          return;
+        }
+
+        // 👉 3. Último fallback → WhatsApp
+        window.open(
+          `https://wa.me/52${waNumber}?text=Hola, quiero pedir ${encodeURIComponent(
+            p.name
+          )} del análisis personalizado.`,
+          "_blank"
+        );
+      } catch (e) {
+        console.error("Error botón compra:", e);
+
+        // fallback seguro SIEMPRE
+        window.open(
+          `https://wa.me/52${waNumber}?text=Hola, quiero pedir ${encodeURIComponent(
+            p.name
+          )} del análisis personalizado.`,
+          "_blank"
+        );
+      }
+    }}
+  >
+    Quiero este producto
+  </button>
+</div>
                   </div>
                 ))}
               </div>
