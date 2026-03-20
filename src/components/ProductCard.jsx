@@ -303,7 +303,14 @@ function updatePromo(value) {
             </div>
           ) : (
             <>
+
+<p className="text-[11px] text-emerald-700 font-medium">
+  ✔ Desinflama tu cuerpo desde la primera semana
+</p>
               <div className="flex items-baseline gap-1.5">
+<p className="text-[11px] text-gray-500">
+  ⭐ 4.8 (128 reseñas)
+</p>
                 <div className="text-base sm:text-lg font-extrabold text-emerald-700">
                   ${finalPrice}
                 </div>
@@ -335,6 +342,8 @@ function updatePromo(value) {
 <div className="text-[11px] text-gray-600 font-semibold mt-1">
   + Envío desde $50 MXN
 </div>
+
+
 
 <div className="text-[10px] text-gray-800">
   El envío exacto se calcula en el pago según tu dirección.
@@ -402,6 +411,18 @@ function updatePromo(value) {
   return null;
 })()}
 
+<p className="text-[11px] text-gray-500">
+  🔥 7 personas viendo este producto ahora
+</p>
+
+<p className="text-[11px] text-red-500">
+  ⏳ Últimas horas con este precio
+</p>
+
+<p className="text-[11px] text-green-600 font-medium">
+  ✔ Pago seguro • Sin compromiso
+</p>
+
            {/* BLOQUE BOTONES */}
       <div className="mt-auto flex flex-col gap-2">
         {/* ✅ VER MÁS */}
@@ -423,7 +444,7 @@ function updatePromo(value) {
           onClick={handlePayNow}
           className="mt-1 sm:mt-2 w-full text-center rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-white py-1.5 sm:py-2 text-xs sm:text-sm font-semibold shadow hover:opacity-90"
         >
-          Pagar ahora
+          Comprar ahora con precio especial
         </button>
       </div>
     </div>

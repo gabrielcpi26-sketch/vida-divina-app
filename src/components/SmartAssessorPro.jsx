@@ -1086,7 +1086,7 @@ return (
 
       <div className="space-y-2">
         <h3 className="text-sm md:text-base font-semibold text-gray-800">
-          Productos recomendados para ti
+          Recomendados para tu tipo de metabolismo
         </h3>
 
         <div className="space-y-2">
@@ -1112,6 +1112,45 @@ return (
                       {p.name}
                     </p>
 
+<p className="text-[11px] text-gray-600 text-center">
+  ✔Desinflama tu cuerpo desde la primera semana
+</p>
+
+
+{(() => {
+  const base = Number(p.price || p.price_mxn || p.precio || p.unit_price || 0);
+
+  // 🔥 lógica simple de oferta (NO rompe nada)
+  const hasPromo = base >= 700; // aplica a productos fuertes
+  const oldPrice = hasPromo ? Math.round(base * 1.25) : null;
+
+  return (
+    <div className="mt-1 text-center">
+      {hasPromo && (
+        <p className="text-[11px] text-gray-400 line-through">
+          ${oldPrice.toLocaleString()} MXN
+        </p>
+      )}
+
+      <p className="text-lg font-extrabold text-emerald-700">
+        ${base.toLocaleString()} MXN
+      </p>
+
+
+      {hasPromo && (
+        <p className="text-[11px] text-red-600 font-semibold">
+          🔥 Oferta especial hoy
+        </p>
+      )}
+    </div>
+  );
+})()}
+<p className="text-[11px] text-gray-500 text-center">
+  ⭐ 4.8 (128 reseñas)
+</p>
+
+
+
                     {/* Imagen recomendación */}
                     <div className="w-full h-32 bg-white flex items-center justify-center p-2">
                       {p.img && (
@@ -1128,8 +1167,24 @@ return (
   {buildReasonPro(p, imcInfo, goalKey)}
 </p>
 
+<p className="text-[11px] text-gray-500 text-center">
+  🚚 Envío desde $50 MXN
+</p>
+
+<p className="text-[11px] text-green-600 text-center">
+  ✔ Pago seguro • Sin compromiso
+</p>
+
 {/* Botón abajo siempre */}
 <div className="mt-auto pt-2">
+ {/* 🔥 URGENCIA PRO */}
+  <p className="text-[11px] text-gray-500 text-center mb-1">
+    🔥 7 personas viendo este producto ahora
+  </p>
+<p className="text-[11px] text-red-500 text-center">
+  ⏳ Últimas horas con este precio
+</p>
+
   <button
     type="button"
     className="w-full text-[11px] px-3 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
@@ -1190,7 +1245,7 @@ return (
       }
     }}
   >
-    Quiero este producto
+    Comprar ahora con precio especial
   </button>
 </div>
                   </div>

@@ -77,22 +77,27 @@ useEffect(() => {
   const fetchAll = async () => {
     try {
       const [
-        { data: products, error: e1 },
-        { data: content, error: e2 },
-        { data: testimonialsData, error: e3 },
-        { data: mediaData, error: e4 },
-        { data: images, error: e5 },
-      ] = await Promise.all([
-        supabase
-          .from("vd_products_pro")
-          .select("*")
-          .eq("active", true)
-          .gt("price", 0),
-        supabase.from("vd_product_content").select("*"),
-        supabase.from("vd_testimonials").select("*"),
-        supabase.from("vd_product_media").select("*"),
-        supabase.from("vd_catalog_images").select("*"),
-      ]);
+  { data: products, error: e1 },
+  { data: content, error: e2 },
+  { data: testimonialsData, error: e3 },
+  { data: mediaData, error: e4 },
+  { data: images, error: e5 },
+  { data: baseProducts, error: e6 }, // 👈 NUEVO
+] = await Promise.all([
+  supabase
+    .from("vd_products_pro")
+    .select("*")
+    .eq("active", true)
+    .gt("price", 0),
+
+  supabase.from("vd_product_content").select("*"),
+  supabase.from("vd_testimonials").select("*"),
+  supabase.from("vd_product_media").select("*"),
+  supabase.from("vd_catalog_images").select("*"),
+
+  // 👇 NUEVA QUERY
+  supabase.from("vd_products").select("id, price"),
+]);
 
       if (e1) throw e1;
       if (e2) throw e2;
@@ -101,6 +106,11 @@ useEffect(() => {
       if (e5) throw e5;
 
       setBaseProducts(products || []);
+// 🔥 MAPA DE PRECIOS REALES
+const priceMap = {};
+(baseProducts || []).forEach((p) => {
+  priceMap[p.id] = p.price;
+});
 
       const contentObj = {};
       (content || []).forEach((row) => {
@@ -218,18 +228,21 @@ useEffect(() => {
     return [];
   };
 
-  const merged = (baseProducts || []).map((p) => {
-    const extra = contentMap?.[p.id] || {};
-    return {
-      ...p,
-      img: imageMap?.[p.id] || p.img || "",
-      benefits: toArr(extra.benefits),
-      keywords: toArr(extra.keywords),
-      ingredients: toArr(extra.ingredients),
-      bullets: toArr(extra.bullets),
-      custom_name: extra.custom_name || p.name,
-    };
-  });
+const merged = (baseProducts || []).map((p) => {
+  const extra = contentMap?.[p.id] || {};
+  return {
+    ...p,
+    img: imageMap?.[p.id] || p.img || "",
+    benefits: toArr(extra.benefits),
+    keywords: toArr(extra.keywords),
+    ingredients: toArr(extra.ingredients),
+    bullets: toArr(extra.bullets),
+    custom_name: extra.custom_name || p.name,
+
+    // 🔥 FIX PRECIO REAL
+    price: priceMap?.[p.id] ?? p.price ?? 0,
+  };
+});
 
   setMergedProducts(merged);
 }, [baseProducts, contentMap, imageMap]);
