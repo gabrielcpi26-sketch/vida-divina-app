@@ -1335,7 +1335,7 @@ return (
     );
 
     // 🔥 NUEVO (NO BORRA NADA)
-    const waPhone = "5217292549658";
+    const waPhone = "5214872592095";
 
 const message = encodeURIComponent("Listo, ya hice mi análisis. ¿Qué hago ahora?");
 
