@@ -1319,18 +1319,26 @@ return (
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          tenant_id,
-          phone,
-          recommended_products: recommendations.main.map(p => p.id),
-          context: {
-            flow: "smart_assessor",
-            goalKey,
-            imc,
-            healthScore,
-            unlock_plan: true
-          }
-        })
+     body: JSON.stringify({
+  tenant_id,
+  phone,
+  recommended_products: recommendations.main.map(p => p.id),
+  context: {
+    flow: "smart_assessor",
+    goalKey,
+    imc,
+    healthScore,
+
+    // 🔥 NUEVO (NO ROMPE NADA)
+    metabolicRisk,
+    metabolicProfile,
+    kilosExtra: imcInfo?.kilosExtra || null,
+    imcLabel: imcInfo?.label || null,
+    waterLiters,
+
+    unlock_plan: true
+  }
+})
       }
     );
 
