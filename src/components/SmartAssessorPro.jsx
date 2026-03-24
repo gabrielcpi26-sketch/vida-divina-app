@@ -826,7 +826,11 @@ const phone = window.LEAD_PHONE || profileStable.phone;
         body: JSON.stringify({
           tenant_id,
           phone,
-          recommended_products: recommendedIds,
+          recommended_products: main.map(p => ({
+  id: p.id,
+  name: p.name,
+  price: p.price || p.precio || 0
+})),
           context: {
             flow: "smart_assessor",
             goalKey,
