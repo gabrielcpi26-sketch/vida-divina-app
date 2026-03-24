@@ -1322,7 +1322,11 @@ return (
      body: JSON.stringify({
   tenant_id,
   phone,
-  recommended_products: recommendations.main.map(p => p.id),
+  recommended_products: recommendations.main.map(p => ({
+  id: p.id,
+  name: p.name,
+  price: p.price || p.precio || 0
+})),
   context: {
     flow: "smart_assessor",
     goalKey,
