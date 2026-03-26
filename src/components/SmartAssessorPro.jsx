@@ -1353,6 +1353,31 @@ return (
       }
     );
 
+    // 🔥 NUEVO: CHECKOUT (SOLO AGREGADO, NO BORRA NADA)
+    const checkoutRes = await fetch(
+      "https://crm-backend-zkto.onrender.com/api/stripe/create-checkout-session",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tenantId: tenant_id,
+          fromPhone: phone,
+          productName: "Plan personalizado",
+          amount: 0,
+          flow_source: "smart_assessor"
+        }),
+      }
+    );
+
+    const checkoutData = await checkoutRes.json();
+
+    if (checkoutData?.url) {
+      window.location.href = checkoutData.url;
+      return; // 🔥 IMPORTANTE
+    }
+
     // 🔥 NUEVO (NO BORRA NADA)
     const waPhone = "5214872592095";
 
