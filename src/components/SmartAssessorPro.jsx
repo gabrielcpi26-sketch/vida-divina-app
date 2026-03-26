@@ -949,9 +949,8 @@ const handleBuy = async (product) => {
   productName: product.name,
   amount: product.price || product.precio || 0,
 
-  metadata: {
-    flow_source: "smart_assessor"
-  }
+  // 🔥 CAMBIO: ya no va dentro de metadata
+  flow_source: "smart_assessor"
 }),
       }
     );
