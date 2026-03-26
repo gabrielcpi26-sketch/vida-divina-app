@@ -943,12 +943,16 @@ const handleBuy = async (product) => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          tenantId: tenant_id,
-          fromPhone: phone,
-          productName: product.name,
-          amount: product.price || product.precio || 0,
-        }),
+     body: JSON.stringify({
+  tenantId: tenant_id,
+  fromPhone: phone,
+  productName: product.name,
+  amount: product.price || product.precio || 0,
+
+  metadata: {
+    flow_source: "smart_assessor"
+  }
+}),
       }
     );
 
