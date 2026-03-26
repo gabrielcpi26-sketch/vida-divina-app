@@ -1331,21 +1331,21 @@ return (
   name: p.name,
   price: p.price || p.precio || 0
 })),
-  context: {
-    flow: "smart_assessor",
-    goalKey,
-    imc,
-    healthScore,
+context: {
+  flow: "smart_assessor",
+  flow_source: "smart_assessor", // 🔥 ESTA LÍNEA
+  goalKey,
+  imc,
+  healthScore,
 
-    // 🔥 NUEVO (NO ROMPE NADA)
-    metabolicRisk,
-    metabolicProfile,
-    kilosExtra: imcInfo?.kilosExtra || null,
-    imcLabel: imcInfo?.label || null,
-    waterLiters,
+  metabolicRisk,
+  metabolicProfile,
+  kilosExtra: imcInfo?.kilosExtra || null,
+  imcLabel: imcInfo?.label || null,
+  waterLiters,
 
-    unlock_plan: true
-  }
+  unlock_plan: true
+}
 })
       }
     );
