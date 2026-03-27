@@ -266,16 +266,21 @@ const portada = localStorage.getItem("vd_portada_url")
 
 {/* BOTÓN PRO */}
 <div className="mt-3 flex flex-col items-center gap-2">
-  <button
-    onClick={() => setStep(1)}
-    className="w-full py-3 bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-600
-               text-white rounded-xl font-bold text-base shadow-lg
-               hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]
-               transition-transform transition-shadow duration-200
-               animate-pulse"
-  >
+<button
+  onClick={() => {
+    if (window.fbq) {
+      window.fbq("track", "Lead");
+    }
+    setStep(1);
+  }}
+  className="w-full py-3 bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-600
+             text-white rounded-xl font-bold text-base shadow-lg
+             hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]
+             transition-transform transition-shadow duration-200
+             animate-pulse"
+>
   Quiero saber qué está frenando mi cuerpo ahora
-  </button>
+</button>
 
 <p className="text-[13px] text-center text-gray-700 font-semibold">
   🔒 Valor real de asesoría: <span className="line-through">$499 MXN</span> 
@@ -492,13 +497,18 @@ const portada = localStorage.getItem("vd_portada_url")
                   className="px-3 py-1.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50"
                 >
                   ← Atrás
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-semibold shadow hover:opacity-95"
-                >
-                  Ver mis productos recomendados
-                </button>
+               </button>
+<button
+  type="submit"
+  onClick={() => {
+    if (window.fbq) {
+      window.fbq("track", "CompleteRegistration");
+    }
+  }}
+  className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-semibold shadow hover:opacity-95"
+>
+  Ver mis productos recomendados
+</button>
               </div>
 
               <p className="mt-2 text-[11px] text-gray-400 text-center">

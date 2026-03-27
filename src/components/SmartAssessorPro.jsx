@@ -1189,68 +1189,71 @@ return (
   ⏳ Últimas horas con este precio
 </p>
 
-  <button
-    type="button"
-    className="w-full text-[11px] px-3 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
-    onClick={async () => {
-      try {
-        const tenant_id = "4c7f5e26-de17-4933-83df-84d938cd2073";
-        const phone = window.LEAD_PHONE || profileStable.phone;
+<button
+  type="button"
+  className="w-full text-[11px] px-3 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
+  onClick={async () => {
+    try {
+      const tenant_id = "4c7f5e26-de17-4933-83df-84d938cd2073";
+      const phone = window.LEAD_PHONE || profileStable.phone;
 
-        // 👉 1. Intentar Stripe primero
-        if (phone) {
-          const res = await fetch(
-            "https://crm-backend-zkto.onrender.com/api/stripe/create-checkout-session",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                tenantId: tenant_id,
-                fromPhone: phone,
-                productName: p.name,
-                amount: p.price || p.precio || 0,
-              }),
-            }
-          );
+      if (window.fbq) {
+        window.fbq("track", "InitiateCheckout");
+      }
 
-          const data = await res.json();
-
-          if (data?.url) {
-            window.location.href = data.url;
-            return; // 🔥 IMPORTANTE: corta aquí
+      // 👉 1. Intentar Stripe primero
+      if (phone) {
+        const res = await fetch(
+          "https://crm-backend-zkto.onrender.com/api/stripe/create-checkout-session",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              tenantId: tenant_id,
+              fromPhone: phone,
+              productName: p.name,
+              amount: p.price || p.precio || 0,
+            }),
           }
-        }
+        );
 
-        // 👉 2. Si falla Stripe → abrir catálogo
-        if (typeof onOpenById === "function" && p?.id) {
-          onOpenById(p.id);
+        const data = await res.json();
+
+        if (data?.url) {
+          window.location.href = data.url;
           return;
         }
-
-        // 👉 3. Último fallback → WhatsApp
-        window.open(
-          `https://wa.me/52${waNumber}?text=Hola, quiero pedir ${encodeURIComponent(
-            p.name
-          )} del análisis personalizado.`,
-          "_blank"
-        );
-      } catch (e) {
-        console.error("Error botón compra:", e);
-
-        // fallback seguro SIEMPRE
-        window.open(
-          `https://wa.me/52${waNumber}?text=Hola, quiero pedir ${encodeURIComponent(
-            p.name
-          )} del análisis personalizado.`,
-          "_blank"
-        );
       }
-    }}
-  >
-    Comprar ahora con precio especial
-  </button>
+
+      // 👉 2. Si falla Stripe → abrir catálogo
+      if (typeof onOpenById === "function" && p?.id) {
+        onOpenById(p.id);
+        return;
+      }
+
+      // 👉 3. Último fallback → WhatsApp
+      window.open(
+        `https://wa.me/52${waNumber}?text=Hola, quiero pedir ${encodeURIComponent(
+          p.name
+        )} del análisis personalizado.`,
+        "_blank"
+      );
+    } catch (e) {
+      console.error("Error botón compra:", e);
+
+      window.open(
+        `https://wa.me/52${waNumber}?text=Hola, quiero pedir ${encodeURIComponent(
+          p.name
+        )} del análisis personalizado.`,
+        "_blank"
+      );
+    }
+  }}
+>
+  Comprar ahora con precio especial
+</button>
 </div>
                   </div>
                 ))}
@@ -1306,82 +1309,78 @@ return (
 
 <button
   onClick={async () => {
-  const tenant_id = "4c7f5e26-de17-4933-83df-84d938cd2073";
+    const tenant_id = "4c7f5e26-de17-4933-83df-84d938cd2073";
 
-  const phone = window.LEAD_PHONE || profileStable.phone;
+    const phone = window.LEAD_PHONE || profileStable.phone;
 
-  if (!phone) {
-    alert("Primero necesitamos tu WhatsApp para enviarte el plan.");
-    return;
-  }
+    if (!phone) {
+      alert("Primero necesitamos tu WhatsApp para enviarte el plan.");
+      return;
+    }
 
-  try {
-    await fetch(
-      "https://crm-backend-zkto.onrender.com/api/public/lead-state",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-     body: JSON.stringify({
-  tenant_id,
-  phone,
-  recommended_products: recommendations.main.map(p => ({
-  id: p.id,
-  name: p.name,
-  price: p.price || p.precio || 0
-})),
-  context: {
-    flow: "smart_assessor",
-    goalKey,
-    imc,
-    healthScore,
+    try {
+      await fetch(
+        "https://crm-backend-zkto.onrender.com/api/public/lead-state",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            tenant_id,
+            phone,
+            recommended_products: recommendations.main.map(p => ({
+              id: p.id,
+              name: p.name,
+              price: p.price || p.precio || 0
+            })),
+            context: {
+              flow: "smart_assessor",
+              goalKey,
+              imc,
+              healthScore,
+              metabolicRisk,
+              metabolicProfile,
+              kilosExtra: imcInfo?.kilosExtra || null,
+              imcLabel: imcInfo?.label || null,
+              waterLiters,
+              unlock_plan: true
+            }
+          })
+        }
+      );
 
-    // 🔥 NUEVO (NO ROMPE NADA)
-    metabolicRisk,
-    metabolicProfile,
-    kilosExtra: imcInfo?.kilosExtra || null,
-    imcLabel: imcInfo?.label || null,
-    waterLiters,
-
-    unlock_plan: true
-  }
-})
+      if (window.fbq) {
+        window.fbq("track", "Contact");
       }
-    );
 
-    // 🔥 NUEVO (NO BORRA NADA)
-    const waPhone = "5214872592095";
+      const waPhone = "5214872592095";
+      const message = encodeURIComponent("Listo, ya hice mi análisis. ¿Qué hago ahora?");
+      const url = `https://wa.me/${waPhone}?text=${message}`;
 
-const message = encodeURIComponent("Listo, ya hice mi análisis. ¿Qué hago ahora?");
+      window.open(url, "_blank");
 
-    const url = `https://wa.me/${waPhone}?text=${message}`;
-
-    window.open(url, "_blank");
-
-  } catch (e) {
-    console.warn("unlock plan error", e);
-  }
-}}
+    } catch (e) {
+      console.warn("unlock plan error", e);
+    }
+  }}
   className="relative mt-4 w-full py-4 rounded-xl text-white text-base md:text-lg font-bold 
   bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-500
   shadow-xl hover:scale-[1.03] hover:shadow-2xl transition-all duration-200"
 >
-
   <span className="absolute -top-2 -left-2 animate-bounce text-xl">
     🎁
   </span>
 
   Recibir mi plan personalizado ahora
 
-<p className="text-xs text-amber-700 mt-2 text-center">
-  Basado en tu cuerpo, listo en segundos por WhatsApp
-</p>
+  <p className="text-xs text-amber-700 mt-2 text-center">
+    Basado en tu cuerpo, listo en segundos por WhatsApp
+  </p>
 
   <span className="absolute -right-2 top-1 animate-pulse text-xl">
     ✨
   </span>
-
 </button>
 
 <button

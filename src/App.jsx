@@ -25,6 +25,7 @@ const STORAGE_USER_PROFILE = "vd_user_profile";
 
 
 export default function VidaDivinaApp() {
+console.log("APP_VIDA_DIVINA_RENDER_OK");
   // -------- Filtros / búsqueda --------
   const [category, setCategory] = useState("todas");
   const [query, setQuery] = useState("");
@@ -56,6 +57,39 @@ export default function VidaDivinaApp() {
 const [mergedProducts, setMergedProducts] = useState([]);
 
 const location = useLocation();
+
+const META_PIXEL_ID = "1554833019152744";
+
+useEffect(() => {
+  if (window.fbq) {
+    window.fbq("track", "PageView");
+    return;
+  }
+
+  window.fbq = function () {
+    window.fbq.callMethod
+      ? window.fbq.callMethod.apply(window.fbq, arguments)
+      : window.fbq.queue.push(arguments);
+  };
+
+  if (!window._fbq) window._fbq = window.fbq;
+  window.fbq.push = window.fbq;
+  window.fbq.loaded = true;
+  window.fbq.version = "2.0";
+  window.fbq.queue = [];
+
+  const script = document.createElement("script");
+  script.async = true;
+  script.src = "https://connect.facebook.net/en_US/fbevents.js";
+
+  script.onload = () => {
+    window.fbq("init", "1554833019152744");
+    window.fbq("track", "PageView");
+    console.log("PIXEL_CARGADO_OK");
+  };
+
+  document.head.appendChild(script);
+}, []);
 
   // ✅ Precios/promo (usados por ProductCard en editMode)
   // (puedes migrarlos a Supabase después; ahorita se mantienen en estado)

@@ -202,13 +202,18 @@ export default function LeadCaptureScreen() {
 
           {error && <p className="text-xs text-red-600">{error}</p>}
 
-          <button
-            type="submit"
-            disabled={loading || !canSave}
-            className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-semibold shadow hover:opacity-95 disabled:opacity-60"
-          >
-            {loading ? "Guardando..." : "Guardar y ver mis productos recomendados"}
-          </button>
+    <button
+  type="submit"
+  disabled={loading || !canSave}
+  onClick={() => {
+    if (window.fbq && !loading && canSave) {
+      window.fbq("track", "Lead");
+    }
+  }}
+  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-semibold shadow hover:opacity-95 disabled:opacity-60"
+>
+  {loading ? "Guardando..." : "Guardar y ver mis productos recomendados"}
+</button>
         </form>
 
         <button
