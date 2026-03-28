@@ -93,7 +93,7 @@ export default function HeaderBar({
               <img
                 src={hero}
                 alt="Portada"
-                className="w-full h-full object-cover object-[center-25%]"
+                className="w-full h-full object-cover object-[center_55%]"
               />
               {/* overlay elegante para que se vea pro */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-black/10 to-transparent" />

@@ -181,18 +181,18 @@ const priceMap = {};
       
       
       // ✅ mapa de imágenes (vd_catalog_images)
-      const imgMap = {};
-      (images || []).forEach((row) => {
-        imgMap[row.product_id] = row.image_url;
-      });
-      setImageMap(imgMap);
+const imgMap = {};
+(images || []).forEach((row) => {
+  const key = String(row?.product_id || "").trim().toLowerCase();
+  if (key) imgMap[key] = row.image_url;
+});
 
-// ✅ MERGE QUIRÚRGICO: products + content terapéutico + img (sin romper tarjetas)
-      const merged = (products || []).map((p) => {
-        const extra = contentObj[p.id] || {};
-        return {
-          ...p,
-          img: imgMap[p.id] || p.img || "", // ✅ AQUÍ se conecta tu tabla de imágenes
+const merged = (products || []).map((p) => {
+  const pid = String(p?.id || "").trim().toLowerCase();
+  const extra = contentObj[p.id] || {};
+  return {
+    ...p,
+    img: imgMap[pid] || p.img || "",
           benefits: toArr(extra.benefits),
           keywords: toArr(extra.keywords),
           ingredients: toArr(extra.ingredients),
