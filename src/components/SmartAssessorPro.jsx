@@ -1326,26 +1326,27 @@ return (
           headers: {
             "Content-Type": "application/json",
           },
-      body: JSON.stringify({
-  tenant_id,
-  phone,
-  recommended_products: recommendations.main.map(p => ({
-    id: p.id,
-    name: p.name,
-    price: p.price || p.precio || 0
-  })),
-  context: {
-    flow: "smart_assessor",
-    goalKey,
-    imc,
-    healthScore,
-    metabolicRisk,
-    metabolicProfile,
-    kilosExtra: imcInfo?.kilosExtra || null,
-    imcLabel: imcInfo?.label || null,
-    waterLiters
-  }
-})
+          body: JSON.stringify({
+            tenant_id,
+            phone,
+            recommended_products: recommendations.main.map(p => ({
+              id: p.id,
+              name: p.name,
+              price: p.price || p.precio || 0
+            })),
+            context: {
+              flow: "smart_assessor",
+              goalKey,
+              imc,
+              healthScore,
+              metabolicRisk,
+              metabolicProfile,
+              kilosExtra: imcInfo?.kilosExtra || null,
+              imcLabel: imcInfo?.label || null,
+              waterLiters,
+              unlock_plan: true
+            }
+          })
         }
       );
 
@@ -1363,7 +1364,7 @@ return (
       console.warn("unlock plan error", e);
     }
   }}
-  className="relative mt-4 w-full py-4 rounded-xl text-white text-base md:text-lg font-bold 
+className="relative z-20 mt-4 w-full py-4 rounded-xl text-white text-base md:text-lg font-bold 
   bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-500
   shadow-xl hover:scale-[1.03] hover:shadow-2xl transition-all duration-200"
 >
