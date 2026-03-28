@@ -210,7 +210,7 @@ const portada = localStorage.getItem("vd_portada_url")
     <img
   src={portada}
   alt="Imagen de bienvenida"
-  className="w-full max-h-[160px] object-contain rounded-xl shadow"
+  className="w-full h-[160px] object-cover rounded-xl shadow"
   style={fadeInStyle}
   onError={(e) => {
     e.target.src = "/imagenes/teverde1.jpg";
