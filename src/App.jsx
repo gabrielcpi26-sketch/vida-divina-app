@@ -96,11 +96,23 @@ useEffect(() => {
   const [prices, setPrices] = useState({});
 
   // ✅ Redes
-  const [social, setSocial] = useState({
+const [social, setSocial] = useState(() => {
+  try {
+    const saved = localStorage.getItem("vd_social_links");
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  return {
     tiktok: "montoyaihfdianna",
     instagram: "dianamontoya_hdz",
     facebook: "",
-  });
+  };
+});
+
+useEffect(() => {
+  try {
+    localStorage.setItem("vd_social_links", JSON.stringify(social));
+  } catch {}
+}, [social]);
 
 
 
