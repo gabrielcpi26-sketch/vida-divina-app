@@ -32,14 +32,19 @@ export default function CatalogoAdmin() {
   const [creando, setCreando] = useState(false);
 
   // ===============================
-  // PORTADA EDITABLE (solo 1 activa)
-  // ===============================
-  const [portada, setPortada] = useState(
-    localStorage.getItem("vd_portada_url") || ""
-  );
-  const [portadaFile, setPortadaFile] = useState(null);
+// PORTADA EDITABLE (solo 1 activa)
+// ===============================
+const [portada, setPortada] = useState(
+  localStorage.getItem("vd_portada_url") || ""
+);
+const [portadaFile, setPortadaFile] = useState(null);
 
-  async function handleSubirPortada() {
+const [imcPortada, setImcPortada] = useState(
+  localStorage.getItem("vd_imc_portada_url") || ""
+);
+const [imcPortadaFile, setImcPortadaFile] = useState(null);
+
+async function handleSubirPortada() {
   if (!portadaFile) {
     alert("Selecciona una imagen primero");
     return;
@@ -70,10 +75,38 @@ export default function CatalogoAdmin() {
   }
 }
 
+async function handleSubirImcPortada() {
+  if (!imcPortadaFile) {
+    alert("Selecciona una imagen primero");
+    return;
+  }
 
+  try {
+    const url = await subirPortada(imcPortadaFile);
 
+    if (!url) {
+      alert("No se pudo subir la imagen");
+      return;
+    }
 
-  // 🔐 Logout
+    const { error } = await supabase.from("vd_settings").upsert({
+      key: "imc_wizard_image",
+      value: url,
+      updated_at: new Date().toISOString(),
+    });
+
+    if (error) throw error;
+
+    localStorage.setItem("vd_imc_portada_url", url);
+    setImcPortada(url);
+    alert("Imagen del funnel actualizada correctamente");
+  } catch (err) {
+    console.error("Error al guardar imagen IMC:", err);
+    alert("No se pudo guardar la imagen");
+  }
+}
+
+// 🔐 Logout
   const handleSecretLogout = () => {
     try {
       localStorage.removeItem(ADMIN_KEY);
@@ -387,44 +420,80 @@ export default function CatalogoAdmin() {
               </div>
             </div>
 
-            {/* PANEL DE PORTADA */}
-            <div className="mt-10 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h2 className="text-lg font-semibold text-blue-800">
-                Imagen de Bienvenida (Portada)
-              </h2>
+{/* PANEL DE PORTADA */}
+<div className="mt-10 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+  <h2 className="text-lg font-semibold text-blue-800">
+    Imagen de Bienvenida (Portada)
+  </h2>
 
-              <p className="text-sm text-blue-600 mb-3">
-                Esta será la imagen que aparece en tu pantalla de inicio (IMC
-                Wizard).
-              </p>
+  <p className="text-sm text-blue-600 mb-3">
+    Esta será la imagen que aparece en tu pantalla de inicio (IMC Wizard).
+  </p>
 
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setPortadaFile(e.target.files[0])}
-                className="mb-3"
-              />
+  <input
+    type="file"
+    accept="image/*"
+    onChange={(e) => setPortadaFile(e.target.files[0])}
+    className="mb-3"
+  />
 
-              <button
-                onClick={handleSubirPortada}
-                className="px-4 py-2 bg-blue-700 text-white rounded hover:bg-blue-800"
-              >
-                Subir Portada
-              </button>
+  <button
+    onClick={handleSubirPortada}
+    className="px-4 py-2 bg-blue-700 text-white rounded hover:bg-blue-800"
+  >
+    Subir Portada
+  </button>
 
-              {portada && (
-                <div className="mt-4">
-                  <p className="text-sm text-blue-700 font-semibold">
-                    Vista previa:
-                  </p>
-                  <img
-                    src={portada}
-                    className="mt-2 max-h-52 rounded shadow-lg object-contain bg-white"
-                    alt="Portada actual"
-                  />
-                </div>
-              )}
-            </div>
+  {portada && (
+    <div className="mt-4">
+      <p className="text-sm text-blue-700 font-semibold">
+        Vista previa:
+      </p>
+      <img
+        src={portada}
+        className="mt-2 max-h-52 rounded shadow-lg object-contain bg-white"
+        alt="Portada actual"
+      />
+    </div>
+  )}
+</div>
+
+<div className="mt-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+  <h2 className="text-lg font-semibold text-emerald-800">
+    Imagen del Funnel IMC
+  </h2>
+
+  <p className="text-sm text-emerald-600 mb-3">
+    Esta será la imagen del bloque interno del funnel en ImcWizard.
+  </p>
+
+  <input
+    type="file"
+    accept="image/*"
+    onChange={(e) => setImcPortadaFile(e.target.files[0])}
+    className="mb-3"
+  />
+
+  <button
+    onClick={handleSubirImcPortada}
+    className="px-4 py-2 bg-emerald-700 text-white rounded hover:bg-emerald-800"
+  >
+    Subir Imagen Funnel
+  </button>
+
+  {imcPortada && (
+    <div className="mt-4">
+      <p className="text-sm text-emerald-700 font-semibold">
+        Vista previa:
+      </p>
+      <img
+        src={imcPortada}
+        className="mt-2 max-h-52 rounded shadow-lg object-contain bg-white"
+        alt="Imagen funnel actual"
+      />
+    </div>
+  )}
+</div>
           </>
         )}
       </div>

@@ -69,8 +69,8 @@ const needsConfig = [
 export default function ImcWizard() {
 
 // Leer portada desde el Admin
-const portada = localStorage.getItem("vd_portada_url") 
-  || "/imagenes/teverde1.jpg"; // imagen por defecto si aún no subes una
+const portada = localStorage.getItem("vd_imc_portada_url") 
+  || "/imagenes/teverde1.jpg";
 
   const navigate = useNavigate();
 
