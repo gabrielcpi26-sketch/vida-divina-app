@@ -120,9 +120,13 @@ const isAdmin =
       </div>
 
 <div className="mt-6 flex items-center gap-3">
-  <button className="px-4 py-2 rounded bg-emerald-600 text-white shadow" onClick={()=>alert("Datos guardados localmente")}>Guardar</button>
-  <button className="px-4 py-2 rounded border" onClick={resetAll}>Restablecer</button>
-  <button className="px-4 py-2 rounded border" onClick={exportJSON}>Exportar (JSON)</button>
+  {isAdmin && (
+    <>
+      <button className="px-4 py-2 rounded bg-emerald-600 text-white shadow" onClick={()=>alert("Datos guardados localmente")}>Guardar</button>
+      <button className="px-4 py-2 rounded border" onClick={resetAll}>Restablecer</button>
+      <button className="px-4 py-2 rounded border" onClick={exportJSON}>Exportar (JSON)</button>
+    </>
+  )}
   <span className="text-sm text-gray-500 ml-auto">Los datos se guardan localmente.</span>
 </div>
     </section>
