@@ -1,5 +1,6 @@
 // src/pages/ImcWizard.jsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
 import { useNavigate } from "react-router-dom";
 // Efecto fade-in elegante
 const fadeInStyle = {
@@ -23,6 +24,11 @@ if (typeof document !== "undefined" && !document.getElementById("fade-in-anim"))
 
 
 const STORAGE_USER_PROFILE = "vd_user_profile";
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 
 function calcularIMC(peso, estaturaCm) {
   const estaturaM = estaturaCm / 100;
@@ -69,8 +75,27 @@ const needsConfig = [
 export default function ImcWizard() {
 
 // Leer portada desde el Admin
-const portada = localStorage.getItem("vd_imc_portada_url") 
-  || "/imagenes/teverde1.jpg";
+const [portada, setPortada] = useState("/imagenes/teverde1.jpg");
+
+useEffect(() => {
+  async function fetchImcWizardImage() {
+    try {
+      const { data, error } = await supabase
+        .from("vd_settings")
+        .select("value")
+        .eq("key", "imc_wizard_image")
+        .single();
+
+      if (!error && data?.value) {
+        setPortada(data.value);
+      }
+    } catch (err) {
+      console.warn("No se pudo cargar imc_wizard_image:", err);
+    }
+  }
+
+  fetchImcWizardImage();
+}, []);
 
   const navigate = useNavigate();
 
