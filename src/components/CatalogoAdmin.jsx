@@ -40,21 +40,38 @@ export default function CatalogoAdmin() {
   const [portadaFile, setPortadaFile] = useState(null);
 
   async function handleSubirPortada() {
-    if (!portadaFile) {
-      alert("Selecciona una imagen primero");
+  if (!portadaFile) {
+    alert("Selecciona una imagen primero");
+    return;
+  }
+
+  try {
+    const url = await subirPortada(portadaFile);
+
+    if (!url) {
+      alert("No se pudo subir la portada");
       return;
     }
 
-    const url = await subirPortada(portadaFile);
+    const { error } = await supabase.from("vd_settings").upsert({
+      key: "hero_image",
+      value: url,
+      updated_at: new Date().toISOString(),
+    });
 
-    if (url) {
-      localStorage.setItem("vd_portada_url", url);
-      setPortada(url);
-      alert("Portada actualizada correctamente");
-    } else {
-      alert("No se pudo subir la portada");
-    }
+    if (error) throw error;
+
+    localStorage.setItem("vd_portada_url", url);
+    setPortada(url);
+    alert("Portada actualizada correctamente");
+  } catch (err) {
+    console.error("Error al guardar portada:", err);
+    alert("No se pudo guardar la portada");
   }
+}
+
+
+
 
   // 🔐 Logout
   const handleSecretLogout = () => {
