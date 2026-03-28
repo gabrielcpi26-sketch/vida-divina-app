@@ -1358,7 +1358,7 @@ return (
       const message = encodeURIComponent("Listo, ya hice mi análisis. ¿Qué hago ahora?");
       const url = `https://wa.me/${waPhone}?text=${message}`;
 
-      window.open(url, "_blank");
+      window.location.href = url;
 
     } catch (e) {
       console.warn("unlock plan error", e);
